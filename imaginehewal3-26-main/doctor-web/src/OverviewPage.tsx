@@ -18,7 +18,7 @@ export default function OverviewPage({ overview, error }: { overview: Overview |
 
   if (!overview) return error ? <div className="alert-box" role="alert">{error}</div> : <div className="grid-kpi">{[0, 1, 2, 3].map(i => <div key={i} className="card"><Skeleton h={14} w="50%" /><div style={{ height: 14 }} /><Skeleton h={34} w="40%" /></div>)}</div>;
   const s = overview.stats;
-  const surname = overview.doctor.full_name.replace(/^Dr\.?\s*/i, '');
+  const surname = overview.doctor.full_name.replace(/^Dr\.?\s*/i, '').split(/\s+/).pop() || '';
 
   return (
     <>
