@@ -221,7 +221,7 @@ def _findings(blocks: Dict[str, Dict[str, Any]], bp_cats: Dict[str, int], med: O
         if bp_cats.get("crisis"):
             add("critical", "Blood pressure readings in the crisis range", f"{bp_cats['crisis']} of {total} readings at or above 180/120 mmHg.")
         if high / total >= 0.5:
-            add("high", "Blood pressure is mostly stage 2 or higher", f"{high} of {total} readings at or above 140/90 mmHg. Mean {sys_b['stats']['mean']}/{dia_b['stats']['mean']}.")
+            add("high", "Blood pressure is mostly stage 2 or higher", f"{high} of {total} readings at or above 140/90 mmHg. Mean {round(sys_b['stats']['mean'])}/{round(dia_b['stats']['mean'])}.")
         elif (bp_cats.get("stage1", 0) + high) / total >= 0.5:
             add("moderate", "Blood pressure is above target for most readings", f"{bp_cats.get('stage1', 0) + high} of {total} readings at or above 130/80 mmHg.")
         t = sys_b.get("trend", {})
@@ -347,7 +347,7 @@ def cohort_analytics(db: Session, snapshots: List[Dict[str, Any]], patients: Lis
             cond_count[str(c)] += 1
 
     # review order: a plain, explainable score, highest first
-    weights = {"critical": 100, "monitor": 40, "no_data": 15, "stable": 5, "healthy": 0}
+    weights = {"critical": 100, "monitor": 40, "no_data": 15, "stable": 0, "healthy": 0}
     queue = []
     for snap in snapshots:
         pts = weights[snap["group"]] + 30 * snap["active_alerts"]
