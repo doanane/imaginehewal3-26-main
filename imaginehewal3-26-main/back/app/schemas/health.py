@@ -92,9 +92,12 @@ class HealthCategory(BaseModel):
     is_workout: bool = False
 
 class DailyHealthScore(BaseModel):
-    score: int
+    """How far today's goals have been met. It is NOT a measure of how healthy someone is (vital signs are judged separately).
+    `score` is None when nothing is being tracked; `breakdown` lists each goal that counted, so the figure can be explained."""
+    score: Optional[int] = None
     message: str
-    trend_percentage: int
+    trend_percentage: Optional[int] = None
+    breakdown: List[dict] = []
 
 class PersonalizedRecommendation(BaseModel):
     title: str
