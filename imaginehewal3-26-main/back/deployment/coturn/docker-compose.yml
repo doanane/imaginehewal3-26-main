@@ -1,0 +1,10 @@
+# Start the relay:  docker compose up -d
+# Firewall: allow 3478 (UDP and TCP) and UDP 49160-49200 to this server.
+services:
+  coturn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    network_mode: host            # a relay needs real network ports, not Docker's NAT
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
