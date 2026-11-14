@@ -6,6 +6,8 @@ from app.auth.security import get_current_active_user
 from app.models.user import User, UserProfile
 from app.models.health import HealthData, FoodLog, WeeklyProgress, HealthInsight
 from app.models.iot_device import VitalReading
+from app.models.activity import HealthGoals, SleepSession
+from app.models.safety import Medication, MedicationLog
 from app.schemas.health import (
     HealthDataCreate, HealthDataResponse, 
     FoodLogCreate, FoodLogResponse, 
@@ -202,28 +204,42 @@ def get_health_dashboard(
     )
 
     
-    score_parts = []
-    if health_data.steps is not None:
-        score_parts.append(min(100, round(steps / 10000 * 100)))
-    if health_data.water_intake is not None:
-        score_parts.append(min(100, round(water / 2000 * 100)))
-    if health_data.sleep_time is not None:
-        score_parts.append(min(100, round(health_data.sleep_time / 480 * 100)))
+    # A goals score: only goals that are actually being tracked count, each against the person's own target.
+    goals = db.query(HealthGoals).filter(HealthGoals.user_id == uid).first()
+    steps_goal = (goals.steps if goals and goals.steps else 8000)
+    parts = [{"key": "steps", "label": "Steps", "pct": min(100, round(steps / steps_goal * 100)), "detail": f"{steps:,} of {steps_goal:,}"}]
+    if water:
+        wg = weekly_progress.water_goal or 2000
+        parts.append({"key": "water", "label": "Water", "pct": min(100, round(water / wg * 100)), "detail": f"{water} of {wg} ml"})
+    last_sleep = (db.query(SleepSession).filter(SleepSession.user_id == uid, SleepSession.end >= datetime.now().astimezone() - timedelta(hours=36))
+                  .order_by(SleepSession.end.desc()).first())
+    sleep_min = None
+    if last_sleep:
+        sleep_min = (last_sleep.light_min + last_sleep.deep_min + last_sleep.rem_min) if last_sleep.stages or last_sleep.deep_min else last_sleep.total_min
+    elif health_data.sleep_time:
+        sleep_min = health_data.sleep_time
+    if sleep_min:
+        sg = weekly_progress.sleep_goal or 480
+        parts.append({"key": "sleep", "label": "Sleep", "pct": min(100, round(sleep_min / sg * 100)), "detail": f"{sleep_min // 60} h {sleep_min % 60} min"})
     if today_food_logs:
-        score_parts.append(diet_score)
-    score_val = round(sum(score_parts) / len(score_parts)) if score_parts else 0
-    
+        parts.append({"key": "diet", "label": "Meals", "pct": diet_score, "detail": f"{len(today_food_logs)} logged"})
+    meds = db.query(Medication).filter(Medication.user_id == uid, Medication.active == True).all()  # noqa: E712
+    due = sum(len(m.times or []) for m in meds)
+    if due:
+        taken = db.query(MedicationLog).filter(MedicationLog.user_id == uid, MedicationLog.day == today.date(), MedicationLog.status == "taken").count()
+        parts.append({"key": "medicine", "label": "Medicines", "pct": min(100, round(taken / due * 100)), "detail": f"{taken} of {due} taken"})
+    score_val = round(sum(p["pct"] for p in parts) / len(parts))
     daily_score_obj = DailyHealthScore(
         score=score_val,
-        message=f"Welcome, {welcome_name}. You're active today!",
-        trend_percentage=0
+        message=f"{score_val}% of today's goals, from {len(parts)} you are tracking.",
+        trend_percentage=None,
+        breakdown=parts,
     )
 
-    
     trends = [
-        HealthTrend(category="Walking", icon="walk", value=f"{steps} steps", trend="up", message="Above average walking pace."),
+        HealthTrend(category="Walking", icon="walk", value=f"{steps} steps", trend="up" if steps >= steps_goal else "neutral", message=f"{min(100, round(steps / steps_goal * 100))}% of your {steps_goal:,} step goal."),
         HealthTrend(category="Active Energy", icon="flame", value=f"{calories} kcal", trend="neutral", message="From your latest synced health record."),
-        HealthTrend(category="Sleep", icon="bed", value=f"{health_data.sleep_time} min" if health_data.sleep_time else "--", trend="neutral", message="Sync sleep from Apple Health to see a trend."),
+        HealthTrend(category="Sleep", icon="bed", value=f"{sleep_min} min" if sleep_min else "--", trend="neutral", message="From last night's sleep in Apple Health." if sleep_min else "No sleep recorded in the last 36 hours."),
         HealthTrend(category="Stand", icon="body", value="--", trend="neutral", message="Stand data is available when your wearable provides it."),
     ]
 
@@ -240,7 +256,7 @@ def get_health_dashboard(
         
         
         HealthCategory(id="water", title="Water Intake", value=f"{water}", unit="ml", icon="water", color="#007AFF", is_workout=False),
-        HealthCategory(id="sleep", title="Sleep Analysis", value=f"{health_data.sleep_time}" if health_data.sleep_time else "--", unit="min", icon="bed", color="#FF9500", is_workout=False),
+        HealthCategory(id="sleep", title="Sleep Analysis", value=f"{sleep_min}" if sleep_min else "--", unit="min", icon="bed", color="#FF9500", is_workout=False),
         HealthCategory(id="mind", title="Mindfulness", value="--", unit="min", icon="leaf", color="#34C759", is_workout=False),
 
         
