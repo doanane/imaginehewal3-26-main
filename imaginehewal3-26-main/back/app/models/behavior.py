@@ -58,3 +58,83 @@ class BehaviorSettings(Base):
     wearable_data_enabled = Column(Boolean, default=False)
     gamification_enabled = Column(Boolean, default=True)
     gentle_tone = Column(Boolean, default=True)
+    reengage_channel = Column(String, default="push")        # push | in_app | none: how we may reach out after a lapse
+    max_nudges_per_week = Column(Integer, default=2)         # a hard cap the person controls
+    share_with_doctor = Column(Boolean, default=False)       # the linked doctor sees behaviour progress only if this is on
+
+
+class BehaviorContext(Base):
+    """The person's circumstances, in their own words. Used only to fit the plan to their life; editable and deletable at any time."""
+    __tablename__ = "behavior_contexts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True)
+    preferred_time = Column(String, default="any")           # morning | midday | evening | any
+    work_pattern = Column(String, default="regular")         # regular | shift | irregular | not_working
+    mobility = Column(String, default="full")                # full | limited | wheelchair
+    support = Column(String, default="alone")                # alone | family | friend | workplace
+    readiness = Column(Integer, default=3)                   # 1 thinking about it ... 5 already doing it
+    literacy = Column(String, default="standard")            # standard | simple (shorter, plainer wording)
+    motivation_text = Column(String, nullable=True)          # "my reason", shown back on hard days
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class BehaviorNudge(Base):
+    """One re-engagement message that was sent, and whether the person came back after it. This is how the system learns what helps."""
+    __tablename__ = "behavior_nudges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    plan_id = Column(Integer, ForeignKey("behavior_plans.id"), index=True)
+    kind = Column(String, nullable=False)                    # reengage_1 | reengage_2 | supporter | paused
+    channel = Column(String, nullable=False)                 # push | in_app | supporter
+    lapse_start = Column(Date, nullable=False)               # the first missed day of the lapse this belongs to
+    sent_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    hour = Column(Integer, nullable=True)
+    responded = Column(Boolean, default=False)               # checked in within 48 hours
+    responded_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class BehaviorShare(Base):
+    """The person chose to let one caregiver or family member follow a plan and encourage them. Only the owner can create or remove it."""
+    __tablename__ = "behavior_shares"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), index=True)
+    supporter_id = Column(Integer, ForeignKey("users.id"), index=True)
+    plan_id = Column(Integer, ForeignKey("behavior_plans.id"), index=True)
+    level = Column(String, default="cheers")                 # cheers: supporter learns only that encouragement would help | progress: plus weekly engagement
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class BehaviorCheer(Base):
+    """A preset kind message from a supporter. Presets only: no free text, so it cannot be used to pressure or shame."""
+    __tablename__ = "behavior_cheers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    from_id = Column(Integer, ForeignKey("users.id"), index=True)
+    to_id = Column(Integer, ForeignKey("users.id"), index=True)
+    kind = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class BehaviorGroup(Base):
+    """A workplace, community or family group. Members see group totals only; nobody (including whoever created it) sees individuals."""
+    __tablename__ = "behavior_groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    kind = Column(String, default="community")               # workplace | community | family
+    join_code = Column(String, unique=True, index=True)
+    created_by = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class BehaviorGroupMember(Base):
+    __tablename__ = "behavior_group_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("behavior_groups.id"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    joined_at = Column(DateTime(timezone=True), server_default=func.now())
