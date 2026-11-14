@@ -120,7 +120,7 @@ def test_ws_message_and_vitals_push(env):
     c = env["client"]
     with c.websocket_connect("/ws") as wa, c.websocket_connect("/ws") as wb:
         wa.send_json({"type": "auth", "token": env["ta"]})
-        assert wa.receive_json() == {"type": "ready", "user_id": env["a"]}
+        assert wa.receive_json() == {"type": "ready", "user_id": env["a"], "role": "patient"}
         wb.send_json({"type": "auth", "token": env["tb"]})
         assert wb.receive_json()["type"] == "ready"
         assert wa.receive_json()["type"] == "presence"          # caregiver came online
