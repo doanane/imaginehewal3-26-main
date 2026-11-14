@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState } from 'react';
+import { ThemeToggle } from './theme';
 import { motion } from 'framer-motion';
 import { Activity, AlertCircle, Eye, EyeOff, Lock, ShieldCheck, Stethoscope, UserRound } from 'lucide-react';
 import { login, saveSession, Session } from './api';
@@ -30,6 +31,7 @@ export default function Login({ notice, onSignedIn }: { notice: string; onSigned
 
   return (
     <div className="login">
+      <div className="login-theme"><ThemeToggle /></div>
       <section className="login-hero">
         <Suspense fallback={null}><Scene3D /></Suspense>
         <div className="hero-copy">
