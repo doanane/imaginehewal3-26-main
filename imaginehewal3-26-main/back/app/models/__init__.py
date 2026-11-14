@@ -38,6 +38,8 @@ from .safety import SosEvent, SosLog, Medication, MedicationLog
 from .trust import AccessLog, WellbeingCheckin
 from .activity import (HealthGoals, Workout, WeightLog, SleepSession, Participant, Achievement,
                        CommunityPost, PostComment, PostLike, PostReport)
+from .community_review import CommunityReview
+from .explore import ArticleRead, ArticleSave, ChallengeEntry, GroupMember
 
 __all__ = [
     "BehaviorPlan",
@@ -78,6 +80,7 @@ __all__ = [
     
     
     "Notification"
+    ,"CommunityReview"
 ]
 from .care_chat import DoctorMessage
 from .care_plan import DoctorAppointment, DoctorNote, Prescription, PushToken, CareNote

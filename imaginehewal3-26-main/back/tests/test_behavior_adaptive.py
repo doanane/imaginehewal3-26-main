@@ -514,3 +514,10 @@ def test_the_stored_day_uses_the_language_the_person_chose(env):
     ap = c.get("/behavior/approaches", headers=env["hp"]).json()["approaches"]
     assert "confiance" in ap[0]["why_it_works"]
     c.put("/behavior/settings", headers=env["hp"], json={"language": "en"})
+
+
+def test_whole_numbers_are_written_without_a_decimal_point():
+    a = eng.build_action("nutrition", 1.0, 5.0, 2, T, option_index=0)
+    assert "2.0" not in a["title"] and "serving" in a["title"]
+    assert "7.5" in eng.build_action("sleep", 5.5, 7.5, 5, T, option_index=0)["title"]            # a real half hour keeps its decimal
+    assert "{" not in eng.build_action("nutrition", 1.0, 5.0, 2, T, option_index=0, lang="fr")["title"]

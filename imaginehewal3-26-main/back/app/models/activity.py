@@ -103,6 +103,7 @@ class CommunityPost(Base):
     contact_phone = Column(String, nullable=True)             # shown only if the seller chose to add it
     status = Column(String, default="visible", index=True)    # visible | hidden | removed
     report_count = Column(Integer, default=0)
+    group_key = Column(String, nullable=True, index=True)     # an interest group, or null for the general feed
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 

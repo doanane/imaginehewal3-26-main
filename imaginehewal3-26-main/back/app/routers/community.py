@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.auth.security import get_current_active_user
 from app.database import get_db
 from app.models.activity import CommunityPost, Participant, PostComment, PostLike, PostReport
+from app.models.community_review import CommunityReview
 from app.models.user import User
 from app.realtime import hub
 from app.services import assistant_service, participant_service as ps, simple_limiter
@@ -51,6 +52,12 @@ class ReportIn(BaseModel):
     reason: str
 
 
+class ReviewIn(BaseModel):
+    title: str = Field(..., min_length=2, max_length=80)
+    body: str = Field(..., min_length=10, max_length=800)
+    rating: int = Field(5, ge=1, le=5)
+
+
 def _me(db: Session, user: User) -> dict:
     p = ps.get(db, user)
     return {"joined": bool(p), "display_name": p.display_name if p else None, "suggested_name": ps.suggest_name(user), "rules": ps.RULES,
@@ -68,6 +75,59 @@ def join(body: JoinIn, db: Session = Depends(get_db), user: User = Depends(get_c
         raise HTTPException(400, "Please accept the community rules to join")
     ps.join(db, user, body.display_name)
     return _me(db, user)
+
+
+def _review_dict(db: Session, row: CommunityReview, me_id: int, names: dict) -> dict:
+    return {"id": row.id, "title": row.title, "body": row.body, "rating": row.rating, "author": _name(db, row.user_id, names), "mine": row.user_id == me_id,
+            "created_at": row.created_at.isoformat() if row.created_at else None, "edited": bool(row.updated_at)}
+
+
+def _check_review(body: ReviewIn) -> None:
+    text = f"{body.title} {body.body}"
+    if URLS.search(text):
+        raise HTTPException(422, "Reviews cannot contain links")
+    if SELLING_TALK.search(text):
+        raise HTTPException(422, "Reviews are for sharing your experience of the app, not for selling")
+
+
+@router.get("/reviews")
+def reviews(limit: int = 20, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+    """Reviews written by members of the app. The average and the spread count every approved review, not only the ones shown."""
+    limit = max(1, min(limit, 50))
+    base = db.query(CommunityReview).filter(CommunityReview.approved.is_(True))
+    dist = {r: n for r, n in db.query(CommunityReview.rating, func.count(CommunityReview.id)).filter(CommunityReview.approved.is_(True)).group_by(CommunityReview.rating).all()}
+    count = sum(dist.values())
+    rows = base.order_by(CommunityReview.created_at.desc()).limit(limit).all()
+    mine = db.query(CommunityReview).filter_by(user_id=user.id).first()
+    names: dict = {}
+    return {"items": [_review_dict(db, r, user.id, names) for r in rows], "count": count,
+            "average": round(sum(k * v for k, v in dist.items()) / count, 1) if count else None,
+            "distribution": {str(k): int(dist.get(k, 0)) for k in (5, 4, 3, 2, 1)},
+            "mine": _review_dict(db, mine, user.id, names) if mine else None}
+
+
+@router.post("/reviews")
+def create_review(body: ReviewIn, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+    """One review per member. Writing again edits it, so one person cannot raise or lower the average by posting many times."""
+    from datetime import datetime, timezone
+    ps.require(db, user)
+    _check_review(body)
+    row = db.query(CommunityReview).filter_by(user_id=user.id).first()
+    if row:
+        row.title, row.body, row.rating, row.updated_at = body.title.strip(), body.body.strip(), body.rating, datetime.now(timezone.utc)
+    else:
+        row = CommunityReview(user_id=user.id, title=body.title.strip(), body=body.body.strip(), rating=body.rating)
+        db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _review_dict(db, row, user.id, {})
+
+
+@router.delete("/reviews/mine")
+def delete_review(db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+    db.query(CommunityReview).filter_by(user_id=user.id).delete()
+    db.commit()
+    return {"deleted": True}
 
 
 def _name(db: Session, uid: int, cache: dict) -> str:
@@ -94,11 +154,12 @@ def _counts(db: Session, ids: List[int]) -> dict:
 
 
 @router.get("/posts")
-def feed(category: Optional[str] = None, before_id: Optional[int] = None, limit: int = 20, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+def feed(category: Optional[str] = None, group: Optional[str] = None, before_id: Optional[int] = None, limit: int = 20, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     limit = max(1, min(limit, 50))
     q = db.query(CommunityPost).filter((CommunityPost.status == "visible") | ((CommunityPost.user_id == user.id) & (CommunityPost.status == "hidden")))
     if category in CATEGORIES:
         q = q.filter(CommunityPost.category == category)
+    q = q.filter(CommunityPost.group_key == group) if group else q.filter(CommunityPost.group_key.is_(None))      # the general feed never mixes in group posts
     if before_id:
         q = q.filter(CommunityPost.id < before_id)
     rows = q.order_by(CommunityPost.id.desc()).limit(limit + 1).all()
@@ -112,10 +173,17 @@ def feed(category: Optional[str] = None, before_id: Optional[int] = None, limit:
 
 
 @router.post("/posts")
-async def create_post(category: str = Form(...), body: str = Form(...), title: Optional[str] = Form(None), product_category: Optional[str] = Form(None),
+async def create_post(category: str = Form(...), body: str = Form(...), title: Optional[str] = Form(None), product_category: Optional[str] = Form(None), group_key: Optional[str] = Form(None),
                       price: Optional[float] = Form(None), contact_phone: Optional[str] = Form(None), file: Optional[UploadFile] = File(None),
                       db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     ps.require(db, user)
+    if group_key:
+        from app.models.explore import GroupMember
+        from app.services.wellbeing_hub import GROUPS
+        if group_key not in GROUPS or not db.query(GroupMember).filter_by(user_id=user.id, group_key=group_key).first():
+            raise HTTPException(403, "Join this group to post in it")
+        if category == "marketplace":
+            raise HTTPException(422, "The marketplace is not part of interest groups")
     simple_limiter.check(f"post:{user.id}", 5, 3600, "You can post 5 times an hour. Please try again later.")
     body, title = body.strip(), (title or "").strip() or None
     if category not in CATEGORIES:
@@ -154,7 +222,7 @@ async def create_post(category: str = Form(...), body: str = Form(...), title: O
         await file.seek(0)
         image_url = await storage_service.upload_file(file, folder="community")
     post = CommunityPost(user_id=user.id, category=category, title=title, body=body, image_url=image_url, product_category=product_category,
-                         price=price, contact_phone=phone)
+                         price=price, contact_phone=phone, group_key=group_key or None)
     db.add(post)
     db.commit()
     db.refresh(post)

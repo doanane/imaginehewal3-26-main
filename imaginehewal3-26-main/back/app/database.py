@@ -156,6 +156,8 @@ def _ensure_columns():
     """create_all never alters existing tables, so add columns introduced after a database was first created."""
     from sqlalchemy import inspect, text
     wanted = {"doctors": [("hashed_password", "VARCHAR")],
+              "community_posts": [("group_key", "VARCHAR")],
+              "community_reviews": [("updated_at", "TIMESTAMP")],
               "health_data": [("active_minutes", "INTEGER"), ("distance_m", "INTEGER"), ("steps_source", "VARCHAR")],
               "behavior_settings": [("reengage_channel", "VARCHAR DEFAULT 'push'"), ("max_nudges_per_week", "INTEGER DEFAULT 2"),
                                     ("share_with_doctor", "BOOLEAN DEFAULT FALSE")]}

@@ -224,7 +224,7 @@ def build_action(behavior: str, baseline: float, goal: float, level: int,
     why, limits = l10n.tech(lang, technique) or TECHNIQUES[technique]
     limits_label = l10n.LIMITS_LABEL.get(lang, "Limits:")
     return {
-        "title": title_t.format(t=target),
+        "title": title_t.format(t=int(target) if float(target).is_integer() else target),      # "2 servings", never "2.0 servings"
         "detail": detail,
         "technique": technique,
         "rationale": f"{why} {limits_label} {limits}" + (f" {note}" if note else ""),
