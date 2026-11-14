@@ -96,7 +96,8 @@ class CommunityPost(Base):
     category = Column(String, nullable=False, index=True)    # discussion | tip | marketplace
     title = Column(String, nullable=True)
     body = Column(Text, nullable=False)
-    image_url = Column(String, nullable=True)
+    image_url = Column(String, nullable=True)                 # the first picture, kept for older app versions
+    image_urls = Column(JSON, nullable=True)                  # every picture, in order (up to 5 when selling, 1 otherwise)
     product_category = Column(String, nullable=True)          # marketplace only
     price = Column(Float, nullable=True)
     currency = Column(String, default="GHS")
