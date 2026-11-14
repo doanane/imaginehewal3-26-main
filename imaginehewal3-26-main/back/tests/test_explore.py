@@ -76,6 +76,16 @@ def test_challenge_progress_comes_from_real_data(env):
     assert not next(i for i in left["items"] if i["key"] == "mind")["joined"]
 
 
+def test_cards_have_pictures_and_the_chart_has_daily_values(env):
+    c, h = env["client"], env["h"]["a"]
+    items = c.get("/explore/challenges", headers=h).json()["items"]
+    assert all(i["tagline"] for i in items) and all((i["image"] or "").startswith("https://res.cloudinary.com/") for i in items)
+    d = c.get("/explore/challenges/steps", headers=h).json()["challenge"]
+    assert len(d["daily"]) == 7 and sum(v for v in d["daily"] if v) == 9000            # today's 9,000 steps, other days empty or in the future
+    assert c.get("/explore/challenges/mind", headers=h).json()["challenge"]["daily"] is None      # a once-a-week challenge has no daily chart
+    assert all((g["image"] or "").startswith("https://res.cloudinary.com/") for g in c.get("/explore/groups", headers=h).json()["items"])
+
+
 def test_board_shows_only_people_who_opted_in(env):
     c = env["client"]
     _join(env, "a", "Ama Test")
@@ -93,6 +103,9 @@ def test_library_read_is_idempotent_and_counts_for_the_challenge(env):
     assert len(lib["items"]) >= 8 and "not personal medical advice" in lib["notice"]
     assert {i["category"] for i in lib["items"]} == {"physical", "mental", "nutrition", "sleep"}
     assert all(i["key"] for i in c.get("/explore/library?category=sleep", headers=h).json()["items"])
+    assert all(i["image"] for i in lib["items"])
+    foryou = {i["category"] for i in lib["items"] if i["for_you"]}
+    assert "mental" in foryou and "nutrition" in foryou          # no check-in and no meals yet, so those topics are suggested
     assert [i["key"] for i in c.get("/explore/library?q=salt", headers=h).json()["items"]] == ["salt"]
     art = c.get("/explore/library/salt", headers=h).json()
     assert art["body"] and not art["read"]
@@ -144,3 +157,33 @@ def test_reviews_one_per_member_with_average(env):
     assert c.post("/community/reviews", json={"title": "Fine", "body": "A long enough body here", "rating": 6}, headers=hb).status_code == 422
     assert c.delete("/community/reviews/mine", headers=hb).json()["deleted"]
     assert c.get("/community/reviews", headers=hb).json()["mine"] is None
+
+
+def test_a_listing_takes_up_to_five_photos_and_a_normal_post_one(env, monkeypatch):
+    from app.services.storage_service import storage_service
+    c, h = env["client"], env["h"]["c"]
+    _join(env, "c", "Esi Test")
+    uploaded = []
+
+    async def fake_upload(file, folder="general"):
+        uploaded.append(file.filename)
+        return f"https://res.cloudinary.com/demo/image/upload/hewal3/{folder}/{len(uploaded)}.png"
+    monkeypatch.setattr(storage_service, "upload_file", fake_upload)
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+    listing = {"category": "marketplace", "body": "Digital weighing scale, barely used", "product_category": "Weighing scale", "price": "120"}
+    many = lambda n: [("files", (f"p{i}.png", png, "image/png")) for i in range(n)]
+
+    r = c.post("/community/posts", data=listing, files=many(6), headers=h)
+    assert r.status_code == 422 and "up to 5" in r.json()["detail"] and uploaded == []          # refused before anything is uploaded
+    r = c.post("/community/posts", data=listing, files=many(5), headers=h)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert len(body["image_urls"]) == 5 and body["image_url"] == body["image_urls"][0] and len(uploaded) == 5
+    assert c.get(f"/community/posts/{body['id']}", headers=h).json()["image_urls"] == body["image_urls"]
+
+    tip = {"category": "tip", "body": "Walk after dinner"}
+    assert c.post("/community/posts", data=tip, files=many(2), headers=h).status_code == 422       # one photo unless it is a listing
+    ok = c.post("/community/posts", data=tip, files=many(1), headers=h)
+    assert ok.status_code == 200 and len(ok.json()["image_urls"]) == 1
+    old = c.post("/community/posts", data={"category": "tip", "body": "Old app style"}, files={"file": ("a.png", png, "image/png")}, headers=h)
+    assert old.status_code == 200 and len(old.json()["image_urls"]) == 1                            # the single "file" field still works
