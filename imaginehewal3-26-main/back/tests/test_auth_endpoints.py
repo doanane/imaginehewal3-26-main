@@ -1,236 +1,93 @@
-#!/usr/bin/env python3
+"""Signup and login for patients and caregivers, run offline against the app (no server needed).
+
+These guard the rules in CLAUDE.md that broke before: email is normalised the same way at signup and login, login works with any
+letter case, and a caregiver's login carries is_caregiver and caregiver_id. Each run uses fresh addresses, so reruns never collide.
 """
-Test script to verify auth endpoints work correctly.
-Run this after deploying to verify signup/login flow.
-"""
+import os
+import uuid
 
-import requests
-import json
-from datetime import datetime
+os.environ["DATABASE_URL"] = os.environ.get("DATABASE_URL", "sqlite:///./test_ac.db")
 
-BASE_URL = "http://localhost:8000"
+import pytest
+from fastapi.testclient import TestClient
 
-def test_patient_signup():
-    """Test patient signup flow"""
-    print("\n" + "="*60)
-    print("TESTING PATIENT SIGNUP")
-    print("="*60)
-    
-    signup_data = {
-        "email": f"testuser{datetime.now().timestamp()}@example.com",
-        "password": "TestPassword123!",
-        "username": f"testuser_{datetime.now().timestamp():.0f}",
-        "phone_number": "+1234567890"
-    }
-    
-    print(f"\nRequest Data: {json.dumps(signup_data, indent=2)}")
-    
-    response = requests.post(
-        f"{BASE_URL}/auth/signup",
-        json=signup_data,
-        timeout=10
-    )
-    
-    print(f"\nResponse Status: {response.status_code}")
-    print(f"Response Data: {json.dumps(response.json(), indent=2)}")
-    
-    if response.status_code == 200:
-        data = response.json()
-        return {
-            "email": signup_data["email"],
-            "password": signup_data["password"],
-            "user_id": data.get("user_id"),
-            "access_token": data.get("access_token")
-        }
-    else:
-        print(f"❌ Signup failed: {response.json()}")
-        return None
+PASSWORD = "TestPassword123!"
 
 
-def test_patient_login(email, password):
-    """Test patient login flow"""
-    print("\n" + "="*60)
-    print("TESTING PATIENT LOGIN")
-    print("="*60)
-    
-    login_data = {
-        "email": email,
-        "password": password
-    }
-    
-    print(f"\nRequest Data: {json.dumps(login_data, indent=2)}")
-    
-    response = requests.post(
-        f"{BASE_URL}/auth/login",
-        json=login_data,
-        timeout=10
-    )
-    
-    print(f"\nResponse Status: {response.status_code}")
-    response_json = response.json()
-    print(f"Response Data: {json.dumps(response_json, indent=2)}")
-    
-    if response.status_code == 200:
-        print("✅ Login successful!")
-        return response_json
-    else:
-        print(f"❌ Login failed: {response_json}")
-        return None
+@pytest.fixture(scope="module")
+def client():
+    from app.main import app
+    from app.services import simple_limiter
+    simple_limiter.reset()
+    return TestClient(app)
 
 
-def test_case_insensitive_login(email, password):
-    """Test that login works with different email case"""
-    print("\n" + "="*60)
-    print("TESTING CASE-INSENSITIVE LOGIN")
-    print("="*60)
-    
-    # Try login with UPPERCASE email
-    uppercase_email = email.upper()
-    login_data = {
-        "email": uppercase_email,
-        "password": password
-    }
-    
-    print(f"\nRequest Data (uppercase email): {json.dumps(login_data, indent=2)}")
-    
-    response = requests.post(
-        f"{BASE_URL}/auth/login",
-        json=login_data,
-        timeout=10
-    )
-    
-    print(f"\nResponse Status: {response.status_code}")
-    response_json = response.json()
-    print(f"Response Data: {json.dumps(response_json, indent=2)}")
-    
-    if response.status_code == 200:
-        print("✅ Case-insensitive login successful!")
-        return response_json
-    else:
-        print(f"❌ Case-insensitive login failed: {response_json}")
-        return None
+def _tag():
+    return uuid.uuid4().hex[:10]
 
 
-def test_caregiver_signup():
-    """Test caregiver signup flow"""
-    print("\n" + "="*60)
-    print("TESTING CAREGIVER SIGNUP")
-    print("="*60)
-    
-    signup_data = {
-        "email": f"caregiver{datetime.now().timestamp()}@example.com",
-        "password": "CaregiverPass123!",
-        "first_name": "John",
-        "last_name": "Caregiver",
-        "phone_number": "+1234567890",
-        "caregiver_type": "nurse",
-        "agree_to_terms": True
-    }
-    
-    print(f"\nRequest Data: {json.dumps(signup_data, indent=2)}")
-    
-    response = requests.post(
-        f"{BASE_URL}/auth/signup/caregiver",
-        json=signup_data,
-        timeout=10
-    )
-    
-    print(f"\nResponse Status: {response.status_code}")
-    response_json = response.json()
-    print(f"Response Data: {json.dumps(response_json, indent=2)}")
-    
-    if response.status_code == 200:
-        data = response_json
-        print(f"\n✅ Caregiver Signup successful!")
-        print(f"   - Caregiver ID: {data.get('caregiver_id')}")
-        print(f"   - User Type: {data.get('user_type')}")
-        return {
-            "email": signup_data["email"],
-            "password": signup_data["password"],
-            "user_id": data.get("user_id"),
-            "caregiver_id": data.get("caregiver_id"),
-            "access_token": data.get("access_token")
-        }
-    else:
-        print(f"❌ Caregiver signup failed: {response_json}")
-        return None
+@pytest.fixture(scope="module")
+def patient(client):
+    t = _tag()
+    body = {"email": f"auth_{t}@example.com", "password": PASSWORD, "username": f"auth_{t}", "phone_number": "+233200000000"}
+    r = client.post("/auth/signup", json=body)
+    assert r.status_code == 200, r.text
+    return {**body, **r.json()}
 
 
-def test_caregiver_login(email, password):
-    """Test caregiver login flow"""
-    print("\n" + "="*60)
-    print("TESTING CAREGIVER LOGIN")
-    print("="*60)
-    
-    login_data = {
-        "email": email,
-        "password": password
-    }
-    
-    print(f"\nRequest Data: {json.dumps(login_data, indent=2)}")
-    
-    response = requests.post(
-        f"{BASE_URL}/auth/login",
-        json=login_data,
-        timeout=10
-    )
-    
-    print(f"\nResponse Status: {response.status_code}")
-    response_json = response.json()
-    print(f"Response Data: {json.dumps(response_json, indent=2)}")
-    
-    if response.status_code == 200:
-        data = response_json
-        print("✅ Caregiver login successful!")
-        if data.get("is_caregiver"):
-            print(f"   ✅ is_caregiver flag is TRUE")
-        else:
-            print(f"   ⚠️  WARNING: is_caregiver flag is NOT set")
-        if data.get("caregiver_id"):
-            print(f"   ✅ caregiver_id present: {data.get('caregiver_id')}")
-        else:
-            print(f"   ⚠️  WARNING: caregiver_id is missing")
-        return response_json
-    else:
-        print(f"❌ Caregiver login failed: {response_json}")
-        return None
+def test_patient_signup_returns_a_token(patient):
+    assert patient.get("access_token")
+    assert patient.get("user_id")
 
 
-def main():
-    """Run all tests"""
-    print("\n" + "🧪 AUTH ENDPOINT TEST SUITE".center(60, "="))
-    print(f"Base URL: {BASE_URL}")
-    print(f"Timestamp: {datetime.now().isoformat()}")
-    
-    # Test patient flow
-    print("\n\n📋 PATIENT SIGNUP & LOGIN TEST")
-    patient = test_patient_signup()
-    
-    if patient:
-        print(f"\n✅ Patient created: {patient['email']}")
-        test_patient_login(patient['email'], patient['password'])
-        test_case_insensitive_login(patient['email'], patient['password'])
-    
-    # Test caregiver flow
-    print("\n\n👥 CAREGIVER SIGNUP & LOGIN TEST")
-    caregiver = test_caregiver_signup()
-    
-    if caregiver:
-        print(f"\n✅ Caregiver created: {caregiver['email']}")
-        test_caregiver_login(caregiver['email'], caregiver['password'])
-    
-    print("\n" + "="*60)
-    print("TEST SUITE COMPLETE")
-    print("="*60 + "\n")
+def test_patient_login(client, patient):
+    r = client.post("/auth/login", json={"email": patient["email"], "password": PASSWORD})
+    assert r.status_code == 200, r.text
+    assert r.json()["access_token"]
 
 
-if __name__ == "__main__":
-    try:
-        main()
-    except requests.exceptions.ConnectionError:
-        print(f"❌ ERROR: Cannot connect to {BASE_URL}")
-        print("Make sure the backend is running!")
-    except Exception as e:
-        print(f"❌ ERROR: {e}")
-        import traceback
-        traceback.print_exc()
+def test_login_ignores_email_case_and_spaces(client, patient):
+    r = client.post("/auth/login", json={"email": "  " + patient["email"].upper() + " ", "password": PASSWORD})
+    assert r.status_code == 200, r.text
+
+
+def test_wrong_password_is_refused(client, patient):
+    r = client.post("/auth/login", json={"email": patient["email"], "password": "not-the-password"})
+    assert r.status_code == 401
+
+
+@pytest.fixture(scope="module")
+def caregiver(client):
+    t = _tag()
+    body = {"email": f"cg_{t}@example.com", "password": "CaregiverPass123!", "first_name": "John", "last_name": "Caregiver",
+            "phone_number": "+233200000001", "caregiver_type": "professional", "agree_to_terms": True}
+    r = client.post("/auth/signup/caregiver", json=body)
+    assert r.status_code == 200, r.text
+    return {**body, **r.json()}
+
+
+def test_caregiver_signup_identifies_a_caregiver(caregiver):
+    assert caregiver.get("caregiver_id")
+
+
+def test_caregiver_login_keeps_caregiver_fields(client, caregiver):
+    r = client.post("/auth/login", json={"email": caregiver["email"], "password": caregiver["password"]})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data.get("is_caregiver") is True
+    assert data.get("caregiver_id")
+
+
+def test_refresh_token_renews_the_session(client, patient):
+    r = client.post("/auth/login", json={"email": patient["email"], "password": PASSWORD})
+    refresh = r.json()["refresh_token"]
+    new = client.post("/auth/token/refresh", json={"refresh_token": refresh})
+    assert new.status_code == 200, new.text
+    body = new.json()
+    assert body["user_type"] == "patient"
+    assert client.get("/auth/me", headers={"Authorization": "Bearer " + body["access_token"]}).status_code == 200
+    from jose import jwt
+    from app.config import settings
+    assert jwt.decode(body["access_token"], settings.SECRET_KEY, algorithms=[settings.ALGORITHM])["user_type"] == "patient"   # accepted by /ws
+    assert client.post("/auth/token/refresh", json={"refresh_token": "nope"}).status_code == 401
+    assert client.post("/auth/token/refresh", json={}).status_code == 422
