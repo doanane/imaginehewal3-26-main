@@ -5,7 +5,10 @@ Protocol (JSON text frames, max 4 KB):
   server -> {"type":"ready","user_id":N}
   client -> {"type":"ping"}                server -> {"type":"pong"}
   client -> {"type":"typing","to_user_id":N,"is_typing":true}   (only to approved contacts)
-  server pushes: message.new, notification.new, vitals.update, presence, typing
+  server pushes: message.new, notification.new, vitals.update, presence, typing, doctor_message.new, care.refresh
+  Doctors connect with their website token and are addressed by the NEGATIVE of their doctors.id (patients are positive user ids).
+  Calls (WebRTC signalling only, media goes peer to peer): call.invite | call.accept | call.reject | call.end | call.signal,
+  each with {"to": key, "call_id": str}. The server checks the two people are linked, then forwards it with from_user_id/from_name.
 The token is sent in the first frame, never in the URL, so it does not end up in access logs.
 No cookies are used, so cross-site WebSocket hijacking does not apply.
 """
@@ -20,42 +23,69 @@ from sqlalchemy import or_
 
 from app.config import settings
 from app.database import SessionLocal
-from app.models.caregiver import CaregiverRelationship
-from app.models.user import User
+from app.models.caregiver import CaregiverRelationship, Doctor
+from app.models.user import User, UserProfile
 from app.realtime import hub
+from app.services import push
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["realtime"])
 
 AUTH_TIMEOUT_S = 8
 IDLE_TIMEOUT_S = 90
-MAX_FRAME = 4096
+MAX_FRAME = 16384
 MAX_FRAMES_PER_10S = 100
 
 
-def _user_from_token(token: str):
+def _identity(token: str):
+    """(key, display name, role) for a valid token, else None. Doctors use a negative key so they never collide with user ids."""
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    if payload.get("user_type") not in ("patient", "caregiver"):
-        return None
-    uid = int(payload["sub"])
+    kind = payload.get("user_type")
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.id == uid, User.is_active == True).first()  # noqa: E712
-        return (user.id, user.is_caregiver) if user else None
+        if kind == "doctor":
+            doc = db.query(Doctor).filter(Doctor.doctor_id == str(payload["sub"]), Doctor.is_active == True).first()  # noqa: E712
+            return (-doc.id, doc.full_name or "Doctor", "doctor") if doc else None
+        if kind not in ("patient", "caregiver"):
+            return None
+        user = db.query(User).filter(User.id == int(payload["sub"]), User.is_active == True).first()  # noqa: E712
+        if not user:
+            return None
+        name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "HEWAL3 user"
+        return user.id, name, ("caregiver" if user.is_caregiver else "patient")
     finally:
         db.close()
 
 
-def _approved_contacts(user_id: int) -> set:
+def _contacts(key: int) -> set:
+    """Who this connection may talk to: approved caregiver links, and the patient/doctor link."""
     db = SessionLocal()
     try:
+        if key < 0:
+            doc = db.query(Doctor).filter(Doctor.id == -key).first()
+            if not doc:
+                return set()
+            return {uid for (uid,) in db.query(UserProfile.user_id).filter(UserProfile.doctor_id == doc.doctor_id).all()}
         rels = db.query(CaregiverRelationship).filter(
             CaregiverRelationship.status == "approved",
-            or_(CaregiverRelationship.caregiver_id == user_id,
-                CaregiverRelationship.patient_id == user_id)).all()
-        return {r.patient_id if r.caregiver_id == user_id else r.caregiver_id for r in rels}
+            or_(CaregiverRelationship.caregiver_id == key, CaregiverRelationship.patient_id == key)).all()
+        out = {r.patient_id if r.caregiver_id == key else r.caregiver_id for r in rels}
+        prof = db.query(UserProfile).filter(UserProfile.user_id == key).first()
+        if prof and prof.doctor_id:
+            doc = db.query(Doctor).filter(Doctor.doctor_id == prof.doctor_id, Doctor.is_active == True).first()  # noqa: E712
+            if doc:
+                out.add(-doc.id)
+        return out
     finally:
         db.close()
+
+
+# who is currently in a call with whom (one call per person; a second caller hears "busy")
+_in_call: dict = {}
+# invitations for someone whose app is closed: delivered when they open it (from the push), for up to RING_S seconds
+_pending: dict = {}
+RING_S = 45
+CALL_KINDS = ("audio", "video")
 
 
 @router.websocket("/ws")
@@ -68,7 +98,7 @@ async def ws_endpoint(websocket: WebSocket):
         msg = json.loads(raw)
         if msg.get("type") != "auth":
             raise ValueError("first frame must be auth")
-        who = await asyncio.to_thread(_user_from_token, msg.get("token", ""))
+        who = await asyncio.to_thread(_identity, msg.get("token", ""))
         if not who:
             raise ValueError("unknown user")
     except (asyncio.TimeoutError, ValueError, JWTError, KeyError, TypeError, json.JSONDecodeError):
@@ -77,13 +107,21 @@ async def ws_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         return
 
-    user_id = who[0]
+    user_id, my_name, my_role = who
     if not hub.register(user_id, websocket):
         await websocket.close(code=4429)  # too many connections for this user
         return
 
-    contacts = await asyncio.to_thread(_approved_contacts, user_id)
-    await websocket.send_json({"type": "ready", "user_id": user_id})
+    contacts = await asyncio.to_thread(_contacts, user_id)
+    contacts_at = time.monotonic()
+    await websocket.send_json({"type": "ready", "user_id": user_id, "role": my_role})
+    waiting = _pending.pop(user_id, None)
+    if waiting and waiting[1] > time.monotonic() and _in_call.get(user_id, (None, None))[1] == waiting[0]["call_id"]:
+        await websocket.send_json(waiting[0])                    # the call that woke this phone is still ringing
+    elif waiting:
+        peer = _in_call.pop(user_id, None)
+        if peer:
+            _in_call.pop(peer[0], None)
     await hub.send_many(contacts, {"type": "presence", "user_id": user_id, "online": True})
 
     window_start, frames = time.monotonic(), 0
@@ -104,11 +142,52 @@ async def ws_endpoint(websocket: WebSocket):
             kind = data.get("type")
             if kind == "ping":
                 await websocket.send_json({"type": "pong"})
-            elif kind == "typing":
-                to = data.get("to_user_id")
-                if isinstance(to, int) and to in contacts:
-                    await hub.send(to, {"type": "typing", "from_user_id": user_id,
-                                        "is_typing": bool(data.get("is_typing"))})
+            elif kind in ("typing", "call.invite", "call.accept", "call.reject", "call.end", "call.signal"):
+                to = data.get("to_user_id") if kind == "typing" else data.get("to")
+                if not isinstance(to, int):
+                    continue
+                if to not in contacts or time.monotonic() - contacts_at > 30:   # links change while connected
+                    contacts = await asyncio.to_thread(_contacts, user_id)
+                    contacts_at = time.monotonic()
+                if to not in contacts:
+                    continue
+                if kind == "typing":
+                    await hub.send(to, {"type": "typing", "from_user_id": user_id, "is_typing": bool(data.get("is_typing"))})
+                    continue
+                call_id = str(data.get("call_id", ""))[:64]
+                if not call_id:
+                    continue
+                out = {"type": kind, "call_id": call_id, "from_user_id": user_id, "from_name": my_name, "from_role": my_role}
+                if kind == "call.invite":
+                    out["media"] = data.get("media") if data.get("media") in CALL_KINDS else "audio"
+                    if _in_call.get(to) or _in_call.get(user_id):
+                        await websocket.send_json({"type": "call.unavailable", "call_id": call_id, "reason": "busy", "from_user_id": to})
+                        continue
+                    if not hub.is_online(to):
+                        # app closed: wake the phone with a push and hold the invitation until they open the app
+                        woke = await asyncio.to_thread(push.notify_users, [to], f"Incoming {out['media']} call",
+                                                       f"{my_name} is calling you on HEWAL3. Open the app to answer.", {"type": "call", "call_id": call_id}, True)
+                        if not woke:
+                            await websocket.send_json({"type": "call.unavailable", "call_id": call_id, "reason": "offline", "from_user_id": to})
+                            continue
+                        _pending[to] = (out, time.monotonic() + RING_S)
+                        await websocket.send_json({"type": "call.ringing", "call_id": call_id, "via": "push", "from_user_id": to})
+                    _in_call[user_id] = (to, call_id)
+                    _in_call[to] = (user_id, call_id)
+                    if to in _pending and hub.is_online(to) is False:
+                        continue                                  # nothing to forward yet; delivered when they connect
+                elif kind in ("call.reject", "call.end"):
+                    _pending.pop(to, None)
+                    _pending.pop(user_id, None)
+                    for k in (user_id, to):
+                        if _in_call.get(k, (None, None))[1] == call_id:
+                            _in_call.pop(k, None)
+                elif kind == "call.signal":
+                    sig = data.get("data")
+                    if not isinstance(sig, dict):
+                        continue
+                    out["data"] = sig
+                await hub.send(to, out)
     except (WebSocketDisconnect, asyncio.TimeoutError):
         pass
     except Exception as e:
@@ -116,4 +195,8 @@ async def ws_endpoint(websocket: WebSocket):
     finally:
         hub.unregister(user_id, websocket)
         if not hub.is_online(user_id):
+            peer = _in_call.pop(user_id, None)         # hang up on the other side when someone drops out
+            if peer:
+                _in_call.pop(peer[0], None)
+                await hub.send(peer[0], {"type": "call.end", "call_id": peer[1], "from_user_id": user_id, "reason": "dropped"})
             await hub.send_many(contacts, {"type": "presence", "user_id": user_id, "online": False})
