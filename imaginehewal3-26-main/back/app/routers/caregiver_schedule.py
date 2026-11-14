@@ -9,6 +9,7 @@ from app.auth.security import get_current_user
 from app.models.user import User
 from app.models.caregiver_schedule import CaregiverSchedule, AppointmentStatus, AppointmentType
 from app.models.caregiver import CaregiverRelationship
+from app.utils.enum_value import ev
 
 router = APIRouter(prefix="/caregiver/schedule", tags=["caregiver_schedule"])
 
@@ -146,8 +147,8 @@ def create_appointment(
         patient_email=patient.email,
         title=appointment.title,
         description=appointment.description,
-        appointment_type=appointment.appointment_type.value,
-        status=appointment.status.value,
+        appointment_type=ev(appointment.appointment_type),
+        status=ev(appointment.status),
         start_time=appointment.start_time,
         end_time=appointment.end_time,
         duration_minutes=appointment.duration_minutes,
@@ -222,8 +223,8 @@ def get_appointments(
             patient_email=appointment.patient.email if appointment.patient else "",
             title=appointment.title,
             description=appointment.description,
-            appointment_type=appointment.appointment_type.value,
-            status=appointment.status.value,
+            appointment_type=ev(appointment.appointment_type),
+            status=ev(appointment.status),
             start_time=appointment.start_time,
             end_time=appointment.end_time,
             duration_minutes=appointment.duration_minutes,
