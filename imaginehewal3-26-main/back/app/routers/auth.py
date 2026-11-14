@@ -831,12 +831,20 @@ def change_password(
     
     return {"message": "Password changed successfully"}
 
+class RefreshIn(BaseModel):
+    refresh_token: Optional[str] = None
+
+
 @router.post("/token/refresh")
 def refresh_token(
-    refresh_token: str,
+    body: Optional[RefreshIn] = None,
+    refresh_token: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """Refresh access token"""
+    """Renew the access token. The app sends the refresh token in the JSON body; the older form (a query parameter) still works."""
+    refresh_token = (body.refresh_token if body else None) or refresh_token
+    if not refresh_token:
+        raise HTTPException(status_code=422, detail="refresh_token is required")
     token_record = db.query(RefreshToken).filter(
         RefreshToken.token == refresh_token,
         RefreshToken.is_revoked == False,
@@ -857,15 +865,17 @@ def refresh_token(
         )
     
     
+    kind = "caregiver" if user.is_caregiver else "patient"          # the live connection only accepts these two kinds
     access_token = create_access_token(
         data={"sub": str(user.id)},
-        user_type="user"
+        user_type=kind
     )
     
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
-        "user_type": "user"
+        "user_type": kind
     }
 
 @router.post("/logout")
