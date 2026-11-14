@@ -32,6 +32,8 @@ from app.routers.messages import router as messages_router
 from app.routers.behavior import router as behavior_router
 from app.routers.live_vitals import router as live_vitals_router
 from app.routers.realtime import router as realtime_router
+from app.routers.behavior_support import router as behavior_support_router, doctor_router as behavior_doctor_router
+from app.routers.care_plan import doctor_router as care_plan_doctor_router, patient_router as care_plan_patient_router, misc_router as care_plan_misc_router
 from app.routers.assistant import router as assistant_router
 from app.routers.emergency import router as emergency_router
 from app.routers.risk import router as risk_router
@@ -115,6 +117,13 @@ async def start_huawei_worker():
 
 
 @app.on_event("startup")
+async def start_reengagement_worker():
+    import asyncio
+    from app.services.reengagement import reengagement_worker
+    app.state.reengagement_task = asyncio.create_task(reengagement_worker())     # gentle outreach after a gap; see services/reengagement.py
+
+
+@app.on_event("startup")
 def warm_database_pool():
     import threading
     from app.database import warm_pool
@@ -172,6 +181,11 @@ app.include_router(doctor_portal_router)
 app.include_router(ai_router)
 app.include_router(huawei_router)
 app.include_router(my_doctor_router)
+app.include_router(care_plan_doctor_router)
+app.include_router(care_plan_patient_router)
+app.include_router(care_plan_misc_router)
+app.include_router(behavior_support_router)
+app.include_router(behavior_doctor_router)
 
 # Doctor website (plain HTML/JS, same origin as the API so no CORS or build step): http://<host>:8000/doctor/
 _doctor_site = os.path.join(os.path.dirname(__file__), "static", "doctor")
