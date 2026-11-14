@@ -33,6 +33,7 @@ export function usePolling<T>(load: () => Promise<T>, ms: number, deps: unknown[
   const [updated, setUpdated] = useState<Date | null>(null);
   const loadRef = useRef(load);
   loadRef.current = load;
+  const nowRef = useRef<() => void>(() => {});
   useEffect(() => {
     let stop = false;
     let busy = false;
@@ -51,11 +52,12 @@ export function usePolling<T>(load: () => Promise<T>, ms: number, deps: unknown[
         if (!stop) timer = setTimeout(tick, document.hidden ? ms * 4 : ms);
       }
     };
+    nowRef.current = () => { if (timer) clearTimeout(timer); tick(); };
     tick();
     return () => { stop = true; if (timer) clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
-  return { data, error, online, updated };
+  return { data, error, online, updated, reload: () => nowRef.current() };
 }
 
 export function useHashRoute(): string {
