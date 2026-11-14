@@ -7,9 +7,10 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.auth.hashing import verify_password
+from app.auth.hashing import get_password_hash, verify_password
 from app.auth.security import create_access_token, get_current_active_doctor, get_current_active_user
 from app.database import get_db
 from app.models.caregiver import CaregiverRelationship, Doctor
@@ -22,7 +23,8 @@ from app.models.safety import Medication, MedicationLog
 from app.models.user import User, UserProfile
 from app.realtime import hub
 from app.services.care_snapshot import aware as _aware, iso as _iso, snapshot as _snapshot
-from app.services import ai_features, clinical_analytics
+from app.models.care_chat import DoctorMessage
+from app.services import ai_features, care_chat, clinical_analytics, push
 from app.services.week_data import collect_week
 
 router = APIRouter(prefix="/doctor-portal", tags=["doctor_portal"])
@@ -68,6 +70,58 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
     return {"access_token": token, "token_type": "bearer", "doctor": {
         "doctor_id": doctor.doctor_id, "full_name": doctor.full_name,
         "specialization": doctor.specialization, "hospital": doctor.hospital}}
+
+
+class ProfileIn(BaseModel):
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    specialization: Optional[str] = Field(None, max_length=100)
+    hospital: Optional[str] = Field(None, max_length=120)
+    email: Optional[str] = Field(None, max_length=254)
+
+
+class PasswordIn(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+def _profile(db: Session, doctor: Doctor):
+    return {"doctor_id": doctor.doctor_id, "full_name": doctor.full_name, "specialization": doctor.specialization,
+            "hospital": doctor.hospital, "email": doctor.email, "member_since": _iso(doctor.created_at),
+            "patients": db.query(UserProfile).filter(UserProfile.doctor_id == doctor.doctor_id).count()}
+
+
+@router.get("/me")
+def me(db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
+    return _profile(db, doctor)
+
+
+@router.patch("/me")
+def update_me(body: ProfileIn, db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
+    """The doctor edits how they appear to patients. The doctor ID and password are not changed here."""
+    data = body.model_dump(exclude_unset=True)
+    for key in ("full_name", "specialization", "hospital", "email"):
+        if key in data:
+            val = (data[key] or "").strip()
+            if key == "full_name" and not val:
+                raise HTTPException(422, "Name cannot be empty")
+            if key == "email" and val and ("@" not in val or " " in val):
+                raise HTTPException(422, "Enter a valid email address")
+            setattr(doctor, key, val or None)
+    db.commit()
+    return _profile(db, doctor)
+
+
+@router.post("/me/password")
+def change_password(body: PasswordIn, db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
+    if not doctor.hashed_password or not verify_password(body.current_password, doctor.hashed_password):
+        raise HTTPException(400, "Your current password is not correct")
+    if body.new_password == body.current_password:
+        raise HTTPException(422, "Choose a password you have not used just now")
+    if not (any(c.isalpha() for c in body.new_password) and any(c.isdigit() for c in body.new_password)):
+        raise HTTPException(422, "Use at least one letter and one number")
+    doctor.hashed_password = get_password_hash(body.new_password)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/overview")
@@ -175,19 +229,67 @@ def patient_brief(patient_id: int, refresh: bool = False, db: Session = Depends(
     return ai_features.cached(("brief", patient_id), 1800, make)
 
 
-@router.post("/patients/{patient_id}/message")
-async def send_message(patient_id: int, body: MessageIn, db: Session = Depends(get_db),
-                       doctor: Doctor = Depends(get_current_active_doctor)):
+def _push_message(db: Session, doctor: Doctor, patient: User, role: str, text: str) -> DoctorMessage:
+    m = DoctorMessage(doctor_pk=doctor.id, patient_id=patient.id, sender_role=role, content=text)
+    db.add(m)
+    if role == "doctor":                      # the patient also gets the usual notification when the app is closed
+        db.add(Notification(user_id=patient.id, notification_type="doctor", title=f"Message from {doctor.full_name}",
+                            message=text, sender_id=doctor.id, sender_type="doctor"))
+    db.commit()
+    db.refresh(m)
+    return m
+
+
+@router.get("/inbox")
+def inbox(db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
+    """Unread patient messages per patient, for the badge on the website."""
+    rows = (db.query(DoctorMessage.patient_id, func.count(DoctorMessage.id))
+            .filter(DoctorMessage.doctor_pk == doctor.id, DoctorMessage.sender_role == "patient", DoctorMessage.read_at.is_(None))
+            .group_by(DoctorMessage.patient_id).all())
+    return {"unread": {str(pid): n for pid, n in rows}, "total": sum(n for _, n in rows)}
+
+
+@router.get("/patients/{patient_id}/thread")
+def thread(patient_id: int, limit: int = 100, db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
+    user, _ = _owned_patient(db, doctor, patient_id)
+    rows = (db.query(DoctorMessage).filter(DoctorMessage.doctor_pk == doctor.id, DoctorMessage.patient_id == user.id)
+            .order_by(DoctorMessage.id.desc()).limit(max(1, min(limit, 300))).all())
+    return {"messages": [care_chat.message_dict(m) for m in reversed(rows)], "peer_online": hub.is_online(user.id), "peer_id": user.id}
+
+
+@router.post("/patients/{patient_id}/thread")
+def thread_send(patient_id: int, body: MessageIn, db: Session = Depends(get_db),
+                      doctor: Doctor = Depends(get_current_active_doctor)):
     user, _ = _owned_patient(db, doctor, patient_id)
     text = body.message.strip()
     if not text:
         raise HTTPException(422, "Message is empty")
-    n = Notification(user_id=user.id, notification_type="doctor", title=f"Message from {doctor.full_name}",
-                     message=text, sender_id=doctor.id, sender_type="doctor")
-    db.add(n)
+    m = _push_message(db, doctor, user, "doctor", text)
+    d = care_chat.message_dict(m)
+    hub.send_from_thread(user.id, {"type": "doctor_message.new", "message": d, "doctor_name": doctor.full_name})
+    push.notify_users([user.id], "New message from your doctor", f"{doctor.full_name} wrote to you.", {"type": "doctor_message"})
+    return d
+
+
+@router.post("/patients/{patient_id}/thread/read")
+def thread_read(patient_id: int, db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
+    user, _ = _owned_patient(db, doctor, patient_id)
+    now = datetime.now(timezone.utc)
+    n = (db.query(DoctorMessage).filter(DoctorMessage.doctor_pk == doctor.id, DoctorMessage.patient_id == user.id,
+                                        DoctorMessage.sender_role == "patient", DoctorMessage.read_at.is_(None))
+         .update({"read_at": now}, synchronize_session=False))
     db.commit()
-    await hub.send(user.id, {"type": "notification.new", "id": n.id, "title": n.title, "message": text})
-    return {"ok": True, "id": n.id}
+    if n:
+        hub.send_from_thread(user.id, {"type": "doctor_message.read", "by": "doctor"})
+    return {"read": n}
+
+
+# kept so older clients keep working: the same as writing into the chat thread
+@router.post("/patients/{patient_id}/message")
+def send_message(patient_id: int, body: MessageIn, db: Session = Depends(get_db),
+                       doctor: Doctor = Depends(get_current_active_doctor)):
+    d = thread_send(patient_id, body, db, doctor)
+    return {"ok": True, "id": d["id"]}
 
 
 # ------------------------------------------------------------------ patient side: choose your own doctor
@@ -232,3 +334,47 @@ def unlink_doctor(db: Session = Depends(get_db), user: User = Depends(get_curren
         prof.doctor_id = None
         db.commit()
     return {"doctor": None}
+
+
+def _my_doctor_or_404(db: Session, user: User) -> Doctor:
+    if getattr(user, "is_caregiver", False):
+        raise HTTPException(403, "Caregivers do not have a doctor link")
+    doc = care_chat.doctor_of(db, user.id)
+    if not doc:
+        raise HTTPException(404, "Link your doctor first")
+    return doc
+
+
+@patient_router.get("/thread")
+def my_thread(limit: int = 100, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+    doc = _my_doctor_or_404(db, user)
+    rows = (db.query(DoctorMessage).filter(DoctorMessage.doctor_pk == doc.id, DoctorMessage.patient_id == user.id)
+            .order_by(DoctorMessage.id.desc()).limit(max(1, min(limit, 300))).all())
+    return {"messages": [care_chat.message_dict(m) for m in reversed(rows)], "doctor": _doctor_card(doc),
+            "peer_online": hub.is_online(care_chat.doctor_key(doc)), "peer_id": care_chat.doctor_key(doc)}
+
+
+@patient_router.post("/thread")
+def my_thread_send(body: MessageIn, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+    doc = _my_doctor_or_404(db, user)
+    text = body.message.strip()
+    if not text:
+        raise HTTPException(422, "Message is empty")
+    m = _push_message(db, doc, user, "patient", text)
+    d = care_chat.message_dict(m)
+    name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Patient"
+    hub.send_from_thread(care_chat.doctor_key(doc), {"type": "doctor_message.new", "message": d, "patient_id": user.id, "patient_name": name})
+    return d
+
+
+@patient_router.post("/thread/read")
+def my_thread_read(db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+    doc = _my_doctor_or_404(db, user)
+    now = datetime.now(timezone.utc)
+    n = (db.query(DoctorMessage).filter(DoctorMessage.doctor_pk == doc.id, DoctorMessage.patient_id == user.id,
+                                        DoctorMessage.sender_role == "doctor", DoctorMessage.read_at.is_(None))
+         .update({"read_at": now}, synchronize_session=False))
+    db.commit()
+    if n:
+        hub.send_from_thread(care_chat.doctor_key(doc), {"type": "doctor_message.read", "by": "patient", "patient_id": user.id})
+    return {"read": n}
