@@ -50,9 +50,12 @@ def get_notifications(
     ).order_by(Notification.created_at.desc()).all()
     
     
-    system = [n for n in notifications if n.notification_type == "system"]
+    # Every notification lands in exactly one group. Anything that is not clearly from a caregiver or a doctor (emergency, risk alert,
+    # achievement, a type added later) goes to "system", so a notification can never be stored and then never shown.
+    DOCTOR_TYPES = {"doctor", "appointment", "prescription"}
     caregiver = [n for n in notifications if n.notification_type == "caregiver"]
-    doctor = [n for n in notifications if n.notification_type == "doctor"]
+    doctor = [n for n in notifications if n.notification_type in DOCTOR_TYPES]
+    system = [n for n in notifications if n.notification_type != "caregiver" and n.notification_type not in DOCTOR_TYPES]
     
     return NotificationGroupResponse(
         system=system,
