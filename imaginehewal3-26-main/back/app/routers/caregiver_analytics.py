@@ -12,6 +12,7 @@ from app.models.caregiver import CaregiverRelationship
 from app.models.health import HealthData
 from app.models.caregiver_tasks import CaregiverTask, TaskStatus
 from app.models.caregiver_schedule import CaregiverSchedule, AppointmentStatus
+from app.utils.enum_value import ev
 
 router = APIRouter(prefix="/caregiver/analytics", tags=["caregiver_analytics"])
 logger = logging.getLogger(__name__)
@@ -60,8 +61,8 @@ def get_patient_analytics(
     # Health data analysis
     health_data = db.query(HealthData).filter(
         HealthData.user_id == patient_id,
-        HealthData.created_at >= start_date
-    ).order_by(HealthData.created_at).all()
+        HealthData.date >= start_date
+    ).order_by(HealthData.date).all()
     
     # Task analysis
     tasks = db.query(CaregiverTask).filter(
@@ -150,7 +151,7 @@ def analyze_metric_trend(health_data: List[HealthData], metric_name: str) -> Dic
         if value is not None:
             metric_data.append({
                 "value": value,
-                "timestamp": data.created_at,
+                "timestamp": data.date,
                 "is_critical": getattr(data, 'is_critical', False)
             })
     
@@ -261,7 +262,7 @@ def analyze_appointment_adherence(appointments: List[CaregiverSchedule]) -> Dict
     # Appointment type distribution
     appointment_types = {}
     for appointment in appointments:
-        app_type = appointment.appointment_type.value
+        app_type = ev(appointment.appointment_type)
         appointment_types[app_type] = appointment_types.get(app_type, 0) + 1
     
     return {
