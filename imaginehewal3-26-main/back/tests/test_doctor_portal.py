@@ -22,6 +22,11 @@ def env():
     _ensure_columns()
     simple_limiter.reset()
     db = SessionLocal()
+    # an interrupted earlier run leaves its users behind: remove them the way teardown would, so this run starts clean
+    from app.services.privacy_service import delete_account
+    for stale in db.query(User).filter(User.email.in_(["dp_pat@example.com", "dp_other@example.com", "dp_cg@example.com"])).all():
+        delete_account(db, stale)
+    db.commit()
     for d in ("DPT0001A", "DPT0001B"):
         db.query(Doctor).filter(Doctor.doctor_id == d).delete()
     docs = {d: Doctor(doctor_id=d, full_name=f"Dr {d}", specialization="GP", hospital="Test", is_active=True,
