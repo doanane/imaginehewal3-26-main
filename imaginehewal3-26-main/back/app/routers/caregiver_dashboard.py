@@ -15,6 +15,7 @@ from app.schemas.caregiver_dashboard import (
     CaregiverDashboardResponse, DashboardStats, PatientOverview,
     TaskOverview, AppointmentOverview, AlertItem, VitalTrend
 )
+from app.utils.enum_value import ev
 
 router = APIRouter(prefix="/caregivers", tags=["caregiver_dashboard"])
 logger = logging.getLogger(__name__)
@@ -149,8 +150,8 @@ def get_upcoming_tasks(caregiver_id: int, db: Session) -> List[TaskOverview]:
             patient_id=task.patient_id,
             patient_name=task.patient.username if task.patient else "Unknown",
             task_type=task.task_type,
-            status=task.status.value,
-            priority=task.priority.value,
+            status=ev(task.status),
+            priority=ev(task.priority),
             due_date=task.due_date,
             is_overdue=task.is_overdue()
         )
@@ -173,8 +174,8 @@ def get_todays_appointments(caregiver_id: int, db: Session) -> List[AppointmentO
             title=appointment.title,
             patient_id=appointment.patient_id,
             patient_name=appointment.patient.username if appointment.patient else "Unknown",
-            appointment_type=appointment.appointment_type.value,
-            status=appointment.status.value,
+            appointment_type=ev(appointment.appointment_type),
+            status=ev(appointment.status),
             start_time=appointment.start_time,
             end_time=appointment.end_time,
             location=appointment.location,
