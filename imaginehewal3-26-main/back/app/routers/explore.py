@@ -8,11 +8,14 @@ from app.auth.security import get_current_active_user
 from app.database import get_db
 from app.models.explore import ArticleRead, ArticleSave, GroupMember
 from app.models.user import User
+from app.services import explore_media as media
 from app.services import library_content as lib
 from app.services import participant_service as ps
 from app.services import wellbeing_hub as wh
 
 router = APIRouter(prefix="/explore", tags=["explore"])
+DOMAIN_TOPIC = {"activity": "physical", "habits": "physical", "sleep": "sleep", "nutrition": "nutrition", "mind": "mental"}
+IMG = {"physical": "active", "mental": "mind", "nutrition": "meals", "sleep": "sleep"}      # a category shares the picture of its challenge
 
 
 def _challenge(key: str) -> str:
@@ -31,6 +34,9 @@ def challenges(db: Session = Depends(get_db), user: User = Depends(get_current_a
 def challenge(key: str, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     _challenge(key)
     card = next(c for c in wh.list_challenges(db, user)["items"] if c["key"] == key)
+    ws = wh.week_start()
+    card["daily"] = wh.daily_values(db, user.id, key, ws) if card.get("joined") else None
+    card["week_start"] = ws.isoformat()
     return {"challenge": card, "board": wh.challenge_board(db, user, key)}
 
 
@@ -58,13 +64,14 @@ def library(category: Optional[str] = None, q: str = "", db: Session = Depends(g
     read = {r.article_key for r in db.query(ArticleRead).filter_by(user_id=user.id).all()}
     saved = {s.article_key for s in db.query(ArticleSave).filter_by(user_id=user.id).all()}
     needle = q.strip().lower()[:60]
+    weak = {DOMAIN_TOPIC[d["key"]] for d in wh.compute_score(db, user)["domains"] if d["value"] is None or d["value"] < 70}      # topics where there is room to grow
     items = []
     for a in lib.ARTICLES:
         if category and a["category"] != category:
             continue
         if needle and needle not in (a["title"] + " " + a["summary"]).lower():
             continue
-        items.append({**lib.listing(a), "read": a["key"] in read, "saved": a["key"] in saved})
+        items.append({**lib.listing(a), "image": media.url(IMG[a["category"]]), "for_you": a["category"] in weak, "read": a["key"] in read, "saved": a["key"] in saved})
     return {"categories": [{"key": k, "label": v} for k, v in lib.CATEGORIES.items()], "items": items, "notice": lib.NOTICE}
 
 
@@ -73,7 +80,7 @@ def article(key: str, db: Session = Depends(get_db), user: User = Depends(get_cu
     a = lib.by_key(key)
     if not a:
         raise HTTPException(404, "Article not found")
-    return {**lib.listing(a), "body": a["body"], "notice": lib.NOTICE,
+    return {**lib.listing(a), "image": media.url(IMG[a["category"]]), "body": a["body"], "notice": lib.NOTICE,
             "read": db.query(ArticleRead).filter_by(user_id=user.id, article_key=key).first() is not None,
             "saved": db.query(ArticleSave).filter_by(user_id=user.id, article_key=key).first() is not None}
 
