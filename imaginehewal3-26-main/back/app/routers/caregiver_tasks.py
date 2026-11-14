@@ -10,6 +10,7 @@ from app.auth.security import get_current_user
 from app.models.user import User
 from app.models.caregiver_tasks import CaregiverTask, TaskStatus, TaskPriority
 from app.models.caregiver import CaregiverRelationship
+from app.utils.enum_value import ev
 
 router = APIRouter(prefix="/caregiver", tags=["caregiver"])
 
@@ -122,8 +123,8 @@ def get_tasks(
             title=task.title,
             description=task.description,
             task_type=task.task_type,
-            status=task.status.value,
-            priority=task.priority.value,
+            status=ev(task.status),
+            priority=ev(task.priority),
             due_date=task.due_date,
             start_time=task.start_time,
             end_time=task.end_time,
@@ -202,8 +203,8 @@ def create_task(
         title=task.title,
         description=task.description,
         task_type=task.task_type,
-        status=task.status.value,
-        priority=task.priority.value,
+        status=ev(task.status),
+        priority=ev(task.priority),
         due_date=task.due_date,
         start_time=task.start_time,
         end_time=task.end_time,
@@ -243,7 +244,7 @@ def get_overdue_tasks(
             "title": task.title,
             "patient_id": task.patient_id,
             "due_date": task.due_date.isoformat() if task.due_date else None,
-            "priority": task.priority.value,
+            "priority": ev(task.priority),
             "is_overdue": task.is_overdue()
         }
         for task in tasks
@@ -275,8 +276,8 @@ def get_todays_tasks(
             "id": task.id,
             "title": task.title,
             "patient_id": task.patient_id,
-            "priority": task.priority.value,
-            "status": task.status.value,
+            "priority": ev(task.priority),
+            "status": ev(task.status),
             "due_date": task.due_date.isoformat() if task.due_date else None
         }
         for task in tasks
@@ -316,8 +317,8 @@ def update_task(
     return {
         "id": task.id,
         "title": task.title,
-        "status": task.status.value,
-        "priority": task.priority.value,
+        "status": ev(task.status),
+        "priority": ev(task.priority),
         "updated_at": task.updated_at.isoformat()
     }
 
@@ -372,6 +373,6 @@ def complete_task(
     return {
         "id": task.id,
         "title": task.title,
-        "status": task.status.value,
+        "status": ev(task.status),
         "completed_at": task.completed_at.isoformat()
     }
