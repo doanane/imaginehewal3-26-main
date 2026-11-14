@@ -79,3 +79,6 @@ __all__ = [
     
     "Notification"
 ]
+from .care_chat import DoctorMessage
+from .care_plan import DoctorAppointment, DoctorNote, Prescription, PushToken, CareNote
+from .behavior import BehaviorContext, BehaviorNudge, BehaviorShare, BehaviorCheer, BehaviorGroup, BehaviorGroupMember
