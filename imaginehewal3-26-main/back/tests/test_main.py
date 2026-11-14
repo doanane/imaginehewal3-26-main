@@ -6,7 +6,7 @@ client = TestClient(app)
 def test_read_main():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "Hello from Azure!"}
+    assert response.json() == {"message": "Welcome to HEWAL3 Health API", "docs": "/docs", "status": "online"}
 
 def test_health_check():
     response = client.get("/health")
