@@ -136,6 +136,8 @@ def ingest(body: VitalIn, db: Session = Depends(get_db),
         CaregiverRelationship.patient_id == user.id, CaregiverRelationship.status == "approved").all()]
     for uid in [user.id, *watchers]:
         hub.send_from_thread(uid, event)
+    from app.services.care_chat import refresh_doctor
+    refresh_doctor(db, user.id, "vitals")
 
     # critical readings start the emergency protocol (never allowed to break the ingest itself)
     try:
