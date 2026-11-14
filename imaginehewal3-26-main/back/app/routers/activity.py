@@ -359,3 +359,84 @@ KNOWLEDGE = [
 @router.get("/knowledge")
 def knowledge(user: User = Depends(get_current_active_user)):
     return {"items": KNOWLEDGE, "note": "General health information, not personal medical advice."}
+
+
+# ---------------------------------------------------------------- imports from Apple Health (so nobody types them in every day)
+class WeightImportItem(BaseModel):
+    kg: float = Field(..., ge=20, le=400)
+    at: datetime
+
+
+class WeightImport(BaseModel):
+    entries: List[WeightImportItem] = Field(..., max_length=200)
+
+
+@router.post("/weight/import")
+def import_weight(body: WeightImport, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+    """Weigh-ins read from Apple Health. Safe to send again: one with the same time and weight is stored once."""
+    now = datetime.now(timezone.utc)
+    have = {(_utc(r.at).replace(microsecond=0), round(r.kg, 1)) for r in db.query(WeightLog).filter(WeightLog.user_id == user.id).all()}
+    added = 0
+    for e in body.entries:
+        at = _utc(e.at).replace(microsecond=0)
+        if at > now + timedelta(minutes=5):
+            continue
+        key = (at, round(e.kg, 1))
+        if key in have:
+            continue
+        have.add(key)
+        db.add(WeightLog(user_id=user.id, kg=round(e.kg, 1), at=at))
+        added += 1
+    db.commit()
+    return {"added": added}
+
+
+class SleepImportItem(BaseModel):
+    start: datetime
+    end: datetime
+    asleep_min: int = Field(..., ge=0, le=960)
+    awake_min: int = Field(0, ge=0, le=960)
+    deep_min: int = Field(0, ge=0, le=960)
+    rem_min: int = Field(0, ge=0, le=960)
+    light_min: int = Field(0, ge=0, le=960)
+    stages: Optional[List[StageIn]] = Field(None, max_length=600)
+
+
+class SleepImport(BaseModel):
+    sessions: List[SleepImportItem] = Field(..., max_length=60)
+
+
+@router.post("/sleep/import")
+def import_sleep(body: SleepImport, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+    """Nights read from Apple Health (a watch or the iPhone's own sleep tracking). One night is stored once, whatever number of times it is sent."""
+    now = datetime.now(timezone.utc)
+    have = {_utc(r.start).replace(microsecond=0) for r in db.query(SleepSession).filter(SleepSession.user_id == user.id, SleepSession.source == "apple_health").all()}
+    added = 0
+    for s in body.sessions:
+        start, end = _utc(s.start).replace(microsecond=0), _utc(s.end).replace(microsecond=0)
+        mins = (end - start).total_seconds() / 60
+        if mins < 30 or mins > 16 * 60 or end > now + timedelta(minutes=5) or start in have or s.asleep_min < 30:
+            continue
+        have.add(start)
+        segs = None
+        if s.stages:
+            segs = []
+            for st in s.stages:
+                x, y = _utc(st.start), _utc(st.end)
+                if y <= x or x < start - timedelta(minutes=1) or y > end + timedelta(minutes=1):
+                    continue                                     # a stray stage outside the night is ignored, not a reason to drop the night
+                segs.append({"stage": st.stage, "start": x, "end": y})
+            segs.sort(key=lambda g: g["start"])
+        if segs:
+            sm = svc.sleep_summary(start, end, segs)
+            score, _ = svc.sleep_score(sm["asleep_min"], sm["deep_min"], sm["rem_min"], sm["awake_min"], True)
+            db.add(SleepSession(user_id=user.id, start=start, end=end, total_min=sm["total_min"], awake_min=sm["awake_min"], light_min=sm["light_min"],
+                                deep_min=sm["deep_min"], rem_min=sm["rem_min"], score=score, source="apple_health",
+                                stages=[{"stage": g["stage"], "start": g["start"].isoformat(), "end": g["end"].isoformat()} for g in segs]))
+        else:
+            score, _ = svc.sleep_score(s.asleep_min, s.deep_min, s.rem_min, s.awake_min, bool(s.deep_min or s.rem_min))
+            db.add(SleepSession(user_id=user.id, start=start, end=end, total_min=s.asleep_min, awake_min=s.awake_min, light_min=s.light_min,
+                                deep_min=s.deep_min, rem_min=s.rem_min, score=score, source="apple_health", stages=None))
+        added += 1
+    db.commit()
+    return {"added": added}
