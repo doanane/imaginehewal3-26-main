@@ -30,6 +30,7 @@ PRODUCT_CATEGORIES = ["Smart watch or band", "Blood pressure monitor", "Glucose 
 REPORT_REASONS = ("spam", "unsafe_advice", "selling_medicine", "harassment", "other")
 HIDE_AFTER_REPORTS = 3
 MAX_IMAGE = 5 * 1024 * 1024
+MAX_IMAGES_SELLING = 5                     # a listing can show up to five pictures; any other post, one
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 BLOCKED_SALE = re.compile(r"\b(tramadol|codeine|morphine|diazepam|viagra|sildenafil|antibiotics?|amoxicillin|ciprofloxacin|insulin|prescription|pills?|capsules?|syrup|injection|"
                           r"herbal cure|miracle cure|cure for|alcohol|whisky|vodka|cigarettes?|tobacco|cannabis|weed|guns?|weapons?)\b", re.I)
@@ -139,7 +140,7 @@ def _name(db: Session, uid: int, cache: dict) -> str:
 
 def _post_dict(db: Session, p: CommunityPost, me_id: int, counts: dict, liked: set, names: dict) -> dict:
     likes, comments = counts.get(p.id, (0, 0))
-    return {"id": p.id, "category": p.category, "title": p.title, "body": p.body, "image_url": p.image_url,
+    return {"id": p.id, "category": p.category, "title": p.title, "body": p.body, "image_url": p.image_url, "image_urls": p.image_urls or ([p.image_url] if p.image_url else []),
             "product_category": p.product_category, "price": p.price, "currency": p.currency, "contact_phone": p.contact_phone,
             "author": _name(db, p.user_id, names), "mine": p.user_id == me_id, "status": p.status,
             "created_at": p.created_at.isoformat() if p.created_at else None, "likes": likes, "comments": comments, "liked": p.id in liked}
@@ -174,7 +175,7 @@ def feed(category: Optional[str] = None, group: Optional[str] = None, before_id:
 
 @router.post("/posts")
 async def create_post(category: str = Form(...), body: str = Form(...), title: Optional[str] = Form(None), product_category: Optional[str] = Form(None), group_key: Optional[str] = Form(None),
-                      price: Optional[float] = Form(None), contact_phone: Optional[str] = Form(None), file: Optional[UploadFile] = File(None),
+                      price: Optional[float] = Form(None), contact_phone: Optional[str] = Form(None), file: Optional[UploadFile] = File(None), files: Optional[List[UploadFile]] = File(None),
                       db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     ps.require(db, user)
     if group_key:
@@ -210,18 +211,23 @@ async def create_post(category: str = Form(...), body: str = Form(...), title: O
         phone, price, product_category = None, None, None
         if SELLING_TALK.search(text):
             raise HTTPException(422, "To sell something, post it in the Marketplace")
-    image_url = None
-    if file is not None:
-        data = await file.read(MAX_IMAGE + 1)
+    pictures = ([file] if file is not None else []) + [f for f in (files or []) if f is not None and f.filename]
+    limit = MAX_IMAGES_SELLING if category == "marketplace" else 1
+    if len(pictures) > limit:
+        raise HTTPException(422, f"You can add up to {MAX_IMAGES_SELLING} photos to something you sell" if category == "marketplace" else "A post can have one photo. To show more, post it as a listing in the Marketplace")
+    urls = []
+    for pic in pictures:
+        data = await pic.read(MAX_IMAGE + 1)
         if len(data) > MAX_IMAGE:
-            raise HTTPException(400, "Image is too large (5 MB maximum)")
+            raise HTTPException(400, "A photo is too large (5 MB maximum)")
         kind = sniff_image(data)                       # judged by the file itself, not by the label the phone put on it
         if kind not in IMAGE_TYPES:
-            raise HTTPException(400, "Please attach a JPEG, PNG or WebP image")
-        file.filename = f"post.{EXT[kind]}"
-        await file.seek(0)
-        image_url = await storage_service.upload_file(file, folder="community")
-    post = CommunityPost(user_id=user.id, category=category, title=title, body=body, image_url=image_url, product_category=product_category,
+            raise HTTPException(400, "Please attach JPEG, PNG or WebP images")
+        pic.filename = f"post.{EXT[kind]}"
+        await pic.seek(0)
+        urls.append(await storage_service.upload_file(pic, folder="community"))
+    image_url = urls[0] if urls else None
+    post = CommunityPost(user_id=user.id, category=category, title=title, body=body, image_url=image_url, image_urls=urls or None, product_category=product_category,
                          price=price, contact_phone=phone, group_key=group_key or None)
     db.add(post)
     db.commit()
