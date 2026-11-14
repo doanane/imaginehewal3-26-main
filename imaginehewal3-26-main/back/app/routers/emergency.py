@@ -114,8 +114,12 @@ def simulate_vitals(body: SimulateIn, db: Session = Depends(get_db), user: User 
         raise HTTPException(404, "Not found")
     ev = svc.check_and_trigger(db, user, body.heart_rate, body.blood_oxygen, force=True, systolic=body.systolic, diastolic=body.diastolic)
     if ev:
-        from app.models.iot_device import VitalReading
-        db.add(VitalReading(user_id=user.id, heart_rate=body.heart_rate, blood_oxygen=body.blood_oxygen, blood_pressure_systolic=body.systolic,
+        from app.models.iot_device import IoTDevice, VitalReading
+        sim = db.query(IoTDevice).filter_by(device_id=f"demo-simulation-{user.id}").first()
+        if not sim:
+            sim = IoTDevice(user_id=user.id, device_id=f"demo-simulation-{user.id}", device_type="simulation", device_name="Demo simulation", connection_status="demo")
+            db.add(sim); db.flush()
+        db.add(VitalReading(device_id=sim.id, user_id=user.id, heart_rate=body.heart_rate, blood_oxygen=body.blood_oxygen, blood_pressure_systolic=body.systolic,
                             blood_pressure_diastolic=body.diastolic, is_emergency=True))     # the same reading the clinician and caregiver then see
         db.commit()
     if not ev:

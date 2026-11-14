@@ -9,6 +9,6 @@ def add_security_headers(app: FastAPI):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        response.headers.setdefault("Content-Security-Policy", "default-src 'self'")          # a page may set a stricter or specific one itself
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         return response

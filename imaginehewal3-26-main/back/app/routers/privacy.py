@@ -1,5 +1,6 @@
 """Privacy centre API. Every endpoint only ever touches the signed-in user's own data."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from app.services.email_service import email_service
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -41,7 +42,7 @@ def export(db: Session = Depends(get_db), user: User = Depends(get_current_activ
 
 
 @router.post("/delete-account")
-def delete_account(body: DeleteIn, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
+def delete_account(body: DeleteIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     """Permanently erases the account and everything linked to it. Needs the password and the word DELETE."""
     if body.confirm != "DELETE":
         raise HTTPException(400, 'Type DELETE to confirm')
@@ -51,4 +52,8 @@ def delete_account(body: DeleteIn, db: Session = Depends(get_db), user: User = D
         lockout.record_failure(key, "self")
         raise HTTPException(403, "Password is not correct")
     lockout.clear(key, "self")
-    return svc.delete_account(db, user)
+    email, name = user.email, (user.first_name or user.username or "there")          # read before the account is gone
+    result = svc.delete_account(db, user)
+    if email:                                                                      # confirmation, so a deletion nobody asked for is noticed
+        background_tasks.add_task(email_service.send_account_deleted_email, email, name)
+    return result

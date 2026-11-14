@@ -46,6 +46,7 @@ from app.routers.activity import router as activity_router
 from app.routers.competition import router as competition_router
 from app.routers.community import router as community_router
 from app.routers.explore import router as explore_router
+from app.routers.auth_pages import router as auth_pages_router
 from app.routers.doctor_portal import router as doctor_portal_router, patient_router as my_doctor_router
 from app.routers.ai import router as ai_router
 from app.routers.huawei import router as huawei_router, huawei_worker
@@ -179,6 +180,7 @@ app.include_router(activity_router)
 app.include_router(competition_router)
 app.include_router(community_router)
 app.include_router(explore_router)
+app.include_router(auth_pages_router)
 app.include_router(doctor_portal_router)
 app.include_router(ai_router)
 app.include_router(huawei_router)

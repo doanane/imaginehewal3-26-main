@@ -66,3 +66,11 @@ def test_a_change_is_pushed_live_to_the_account(env, monkeypatch):
     monkeypatch.setattr(realtime.hub, "send_from_thread", lambda uid, ev: sent.append((uid, ev)))
     env["client"].put("/accessibility/preferences", headers=env["ha"], json={**FULL, "contrast": "high"})
     assert sent and sent[0][0] == env["a"] and sent[0][1]["type"] == "accessibility.update" and sent[0][1]["settings"]["contrast"] == "high"
+
+
+def test_every_language_the_app_offers_can_be_saved(env):
+    """The phone sends all settings at once, so a language the server refused would make every other setting (dark mode too) fail to save."""
+    c = env["client"]
+    for code in ("en", "fr", "ar", "tw", "ee", "ha", "gaa"):
+        assert c.put("/accessibility/preferences", headers=env["ha"], json={**FULL, "language": code}).status_code == 200, code
+        assert c.get("/accessibility/preferences", headers=env["ha"]).json()["settings"]["language"] == code

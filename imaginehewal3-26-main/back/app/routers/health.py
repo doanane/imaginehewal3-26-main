@@ -17,10 +17,11 @@ from app.schemas.health import (
     , PersonalizedRecommendation, RiskAlert
 )
 
+from app.services import alert_rules
 from app.services.par import par
 router = APIRouter(prefix="/health", tags=["health"])
 
-def build_personalized_guidance(profile, health_data, latest_vital, today_food_logs):
+def build_personalized_guidance(profile, health_data, latest_vital, today_food_logs, trusted=None, history_ok=False):
     conditions = [str(c).lower() for c in (profile.chronic_conditions or [])] if profile else []
     recommendations = []
     risks = []
@@ -64,42 +65,40 @@ def build_personalized_guidance(profile, health_data, latest_vital, today_food_l
             based_on=[f"{health_data.sleep_time} minutes of sleep recorded"],
         ))
 
-    if latest_vital and latest_vital.heart_rate is not None:
-        if latest_vital.heart_rate >= 120:
+    # Risk alerts are shown only when they are TRUE (see services/alert_rules.py): fresh readings from a real device, the same problem seen
+    # twice at least five minutes apart, and an account with some history. A new user, a single odd reading or the demo tool shows nothing here.
+    trusted = trusted or []
+    if history_ok:
+        pair = alert_rules.confirmed(trusted, alert_rules.hr_out_of_range)
+        if pair:
+            hi = pair[0].heart_rate >= 120
             risks.append(RiskAlert(
-                code="high_heart_rate", title="High heart-rate alert",
-                message="Your latest recorded heart rate is above the configured safety threshold. Rest and seek urgent help if you feel unwell.",
-                severity="high", source="wearable vital reading",
-                based_on=[f"{latest_vital.heart_rate} bpm"],
+                code="high_heart_rate" if hi else "low_heart_rate",
+                title="High heart-rate alert" if hi else "Low heart-rate alert",
+                message=("Your last two heart-rate readings were above the safety threshold. Rest and seek urgent help if you feel unwell." if hi else
+                         "Your last two heart-rate readings were below the safety threshold. Contact your care team, especially if you feel dizzy or faint."),
+                severity="high", source="two recent device readings",
+                based_on=[f"{pair[0].heart_rate} bpm now", f"{pair[1].heart_rate} bpm earlier"],
             ))
-        elif latest_vital.heart_rate <= 40:
+        pair = alert_rules.confirmed(trusted, alert_rules.oxygen_low)
+        if pair:
             risks.append(RiskAlert(
-                code="low_heart_rate", title="Low heart-rate alert",
-                message="Your latest recorded heart rate is below the configured safety threshold. Contact your care team, especially if you feel dizzy or faint.",
-                severity="high", source="wearable vital reading",
-                based_on=[f"{latest_vital.heart_rate} bpm"],
+                code="low_oxygen", title="Low oxygen alert",
+                message="Your last two oxygen readings were below the safety threshold. Repeat the reading while still and seek urgent help if it stays low or you feel unwell.",
+                severity="high", source="two recent device readings",
+                based_on=[f"{pair[0].blood_oxygen:g}% oxygen now", f"{pair[1].blood_oxygen:g}% earlier"],
+            ))
+        pair = alert_rules.confirmed(trusted, alert_rules.bp_critical)
+        if pair:
+            risks.append(RiskAlert(
+                code="high_blood_pressure", title="High blood-pressure alert",
+                message="Your last two blood pressure readings were in a critical range. Rest, repeat the measurement, and seek urgent medical help, especially with symptoms.",
+                severity="critical", source="two recent device readings",
+                based_on=[f"{pair[0].blood_pressure_systolic}/{pair[0].blood_pressure_diastolic} mmHg now",
+                          f"{pair[1].blood_pressure_systolic}/{pair[1].blood_pressure_diastolic} mmHg earlier"],
             ))
 
-    if latest_vital and latest_vital.blood_oxygen is not None and latest_vital.blood_oxygen < 90:
-        risks.append(RiskAlert(
-            code="low_oxygen", title="Low oxygen alert",
-            message="Your latest recorded oxygen reading is below the configured safety threshold. Repeat the reading while still and seek urgent help if it remains low or you feel unwell.",
-            severity="high", source="wearable vital reading",
-            based_on=[f"{latest_vital.blood_oxygen}% oxygen"],
-        ))
-
-    if latest_vital and (
-        (latest_vital.blood_pressure_systolic or 0) >= 180
-        or (latest_vital.blood_pressure_diastolic or 0) >= 120
-    ):
-        risks.append(RiskAlert(
-            code="high_blood_pressure", title="High blood-pressure alert",
-            message="Your latest recorded blood pressure is in a critical range. Rest, repeat the measurement, and seek urgent medical help, especially with symptoms.",
-            severity="critical", source="wearable vital reading",
-            based_on=[f"{latest_vital.blood_pressure_systolic}/{latest_vital.blood_pressure_diastolic} mmHg"],
-        ))
-
-    for log in today_food_logs:
+    for log in (today_food_logs if history_ok else []):
         nutrients = log.nutrients or {}
         sodium = nutrients.get("sodium") if isinstance(nutrients, dict) else None
         if isinstance(sodium, (int, float)) and sodium >= 600:
@@ -137,12 +136,14 @@ def get_health_dashboard(
     today_start = today.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # These reads do not depend on each other, so they are asked at the same time (one round trip instead of five).
-    profile, health_data, latest_vital, weekly_progress, today_food_logs = par(
+    profile, health_data, latest_vital, weekly_progress, today_food_logs, trusted, history_ok = par(
         lambda d: d.query(UserProfile).filter(UserProfile.user_id == uid).first(),
         lambda d: d.query(HealthData).filter(HealthData.user_id == uid).order_by(HealthData.date.desc()).first(),
         lambda d: d.query(VitalReading).filter(VitalReading.user_id == uid).order_by(VitalReading.timestamp.desc()).first(),
         lambda d: d.query(WeeklyProgress).filter(WeeklyProgress.user_id == uid, WeeklyProgress.week_start_date >= week_start).first(),
         lambda d: d.query(FoodLog).filter(FoodLog.user_id == uid, FoodLog.created_at >= today_start).order_by(FoodLog.created_at.desc()).limit(5).all(),
+        lambda d: alert_rules.trusted_readings(d, uid),
+        lambda d: alert_rules.has_history(d, uid),
     )
     welcome_name = profile.full_name if profile else current_user.username
 
@@ -171,7 +172,7 @@ def get_health_dashboard(
         else health_data.blood_pressure
     )
     personalized_recommendations, risk_alerts = build_personalized_guidance(
-        profile, health_data, latest_vital, today_food_logs
+        profile, health_data, latest_vital, today_food_logs, trusted, history_ok
     )
     
     recent_meals = []

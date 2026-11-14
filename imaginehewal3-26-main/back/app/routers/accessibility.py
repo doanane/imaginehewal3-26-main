@@ -29,7 +29,7 @@ class AccessibilitySettings(BaseModel):
     readingGuide: bool = False
     keyboardNavigation: bool = False
     screenReader: bool = False
-    language: Literal["en", "tw"] = "en"
+    language: Literal["en", "fr", "ar", "tw", "ee", "ha", "gaa"] = "en"          # the same codes the app offers (front-sdk58/i18n)
 
 
 class AccessibilityResponse(BaseModel):

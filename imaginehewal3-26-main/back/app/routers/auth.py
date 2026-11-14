@@ -3,9 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, 
 
 from app.schemas.caregiver_signup import CaregiverSignupRequest, CaregiverSignupResponse
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
+import hmac
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request, Query
 import string
@@ -17,6 +19,7 @@ from app.auth.security import create_access_token, verify_password, get_password
 from app.auth.hashing import verify_password as verify_pass, get_password_hash as get_pass_hash
 from app.models.user import User
 from app.models.auth import PasswordResetToken, EmailVerificationToken, LoginOTP, RefreshToken, UserSession
+from app.services import auth_mail, simple_limiter
 from app.services.email_service import email_service
 from app.services.sms_service import sms_service
 from app.config import settings
@@ -354,26 +357,8 @@ def signup(
     db.refresh(user)
     logger.info(f"User created successfully: ID {user.id}, email: {user.email}")
     
-    # Send welcome email with verification token
-    verification_token = generate_token()
-    expires_at = datetime.utcnow() + timedelta(hours=24)
-    
-    verification = EmailVerificationToken(
-        user_id=user.id,
-        token=verification_token,
-        expires_at=expires_at
-    )
-    
-    db.add(verification)
-    db.commit()
-    logger.info(f"Verification token created for user {user.id}")
-    
-    background_tasks.add_task(
-        email_service.send_welcome_email,
-        user.email,
-        user.username or user.email.split('@')[0],
-        verification_token
-    )
+    # Verification: a 6-digit code (typed in the app) and a link, both emailed
+    send_verification(db, user, background_tasks)
 
     # Patient signup defaults to patient user_type for downstream auth checks
     user_type = "patient"
@@ -505,6 +490,8 @@ def signup_caregiver(
     db.refresh(new_user)
     logger.info(f"Caregiver created successfully: ID {new_user.id}, caregiver_id: {caregiver_id}")
 
+    send_verification(db, new_user, background_tasks)
+
     access_token, refresh_token = create_auth_tokens(new_user, db)
     logger.info(f"Auth tokens generated for caregiver {new_user.id}")
 
@@ -523,312 +510,182 @@ def signup_caregiver(
     }
 
 
+class VerifyEmailCodeRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class ResetPasswordCodeRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=8)
+
+
+GENERIC_RESET = "If an account exists for that address, we have sent a code and a link to reset the password."
+GENERIC_VERIFY = "If that account exists and is not verified yet, we have sent a new code and link."
+GENERIC_OTP = "If an account exists for that address, a sign-in code has been sent."
+
+
+def _finish_reset(db: Session, email: str, new_password: str, background_tasks: BackgroundTasks) -> None:
+    """Set the new password, cancel every pending reset, sign the person out everywhere else, and tell them by email."""
+    user = auth_mail.user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
+    user.hashed_password = get_pass_hash(new_password)
+    db.query(PasswordResetToken).filter(func.lower(PasswordResetToken.email) == auth_mail.norm(email)).delete(synchronize_session=False)
+    db.query(RefreshToken).filter(RefreshToken.user_id == user.id).update({"is_revoked": True})
+    db.query(UserSession).filter(UserSession.user_id == user.id).update({"is_active": False})
+    db.commit()
+    background_tasks.add_task(email_service.send_password_changed_email, user.email, auth_mail.display_name(user))
+
+
 @router.post("/forgot-password")
-def forgot_password(
-    request_data: ForgotPasswordRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """Request password reset"""
-    user = db.query(User).filter(User.email == request_data.email).first()
-    
+def forgot_password(request_data: ForgotPasswordRequest, background_tasks: BackgroundTasks, request: Request, db: Session = Depends(get_db)):
+    """Email a 6-digit code and a link. The answer is the same whether or not the address has an account."""
+    email = auth_mail.norm(request_data.email)
+    auth_mail.limit_requests("reset", email, request, 3, 3600)
+    user = auth_mail.user_by_email(db, email)
     if user:
-        
-        reset_token = generate_token()
-        expires_at = datetime.utcnow() + timedelta(hours=1)
-        
-        
-        db.query(PasswordResetToken).filter(
-            PasswordResetToken.email == request_data.email,
-            PasswordResetToken.is_used == False
-        ).update({"is_used": True})
-        
-        
-        reset_token_obj = PasswordResetToken(
-            email=request_data.email,
-            token=reset_token,
-            expires_at=expires_at
-        )
-        
-        db.add(reset_token_obj)
-        db.commit()
-        
-        
-        background_tasks.add_task(
-            email_service.send_password_reset_email,
-            request_data.email,
-            reset_token
-        )
-    
-    
-    return {"message": "If your email exists, you will receive a password reset link"}
+        raw, code = auth_mail.issue_reset(db, email)
+        background_tasks.add_task(email_service.send_password_reset_email, user.email, raw, code)
+    return {"message": GENERIC_RESET}
+
 
 @router.post("/reset-password")
-def reset_password(
-    request_data: ResetPasswordRequest,
-    db: Session = Depends(get_db)
-):
-    """Reset password with token"""
-    
-    reset_token = db.query(PasswordResetToken).filter(
-        PasswordResetToken.token == request_data.token,
-        PasswordResetToken.is_used == False,
-        PasswordResetToken.expires_at > datetime.utcnow()
-    ).first()
-    
-    if not reset_token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token"
-        )
-    
-    
-    user = db.query(User).filter(User.email == reset_token.email).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    
-    user.hashed_password = get_pass_hash(request_data.new_password)
-    reset_token.is_used = True
-    
-    
-    db.query(RefreshToken).filter(RefreshToken.user_id == user.id).update({"is_revoked": True})
-    
-    
-    db.query(UserSession).filter(UserSession.user_id == user.id).update({"is_active": False})
-    
-    db.commit()
-    
+def reset_password(request_data: ResetPasswordRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Reset with the link token (the web page uses this)."""
+    row = auth_mail.reset_by_token(db, request_data.token)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
+    _finish_reset(db, row.email, request_data.new_password, background_tasks)
     return {"message": "Password reset successfully"}
 
+
+@router.post("/reset-password-code")
+def reset_password_code(request_data: ResetPasswordCodeRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Reset with the 6-digit code from the email (the app uses this)."""
+    email = auth_mail.norm(request_data.email)
+    auth_mail.guard_codes(db, "reset", email)
+    row = auth_mail.reset_by_code(db, email, request_data.code)
+    if not row:
+        auth_mail.wrong_code("reset", email)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That code is wrong or has expired")
+    _finish_reset(db, email, request_data.new_password, background_tasks)
+    return {"message": "Password reset successfully"}
+
+
 @router.post("/verify-email")
-def verify_email(
-    request_data: VerifyEmailRequest,
-    db: Session = Depends(get_db)
-):
-    """Verify email with token"""
-    verification_token = db.query(EmailVerificationToken).filter(
-        EmailVerificationToken.token == request_data.token,
-        EmailVerificationToken.expires_at > datetime.utcnow()
-    ).first()
-    
-    if not verification_token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification token"
-        )
-    
-    user = db.query(User).filter(User.id == verification_token.user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    user.is_email_verified = True
-    db.delete(verification_token)
-    db.commit()
-    
+def verify_email(request_data: VerifyEmailRequest, db: Session = Depends(get_db)):
+    """Verify with the link token."""
+    row = auth_mail.verification_by_token(db, request_data.token)
+    user = db.query(User).filter(User.id == row.user_id).first() if row else None
+    if not row or not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
+    auth_mail.mark_verified(db, user)
     return {"message": "Email verified successfully"}
 
+
+@router.post("/verify-email-code")
+def verify_email_code(request_data: VerifyEmailCodeRequest, db: Session = Depends(get_db)):
+    """Verify with the 6-digit code from the email (the app uses this)."""
+    email = auth_mail.norm(request_data.email)
+    auth_mail.guard_codes(db, "verify", email)
+    user = auth_mail.user_by_email(db, email)
+    row = auth_mail.verification_by_code(db, user, request_data.code) if user else None
+    if not row:
+        auth_mail.wrong_code("verify", email)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That code is wrong or has expired")
+    auth_mail.mark_verified(db, user)
+    return {"message": "Email verified successfully"}
+
+
+def send_verification(db: Session, user: User, background_tasks: BackgroundTasks) -> None:
+    raw, code = auth_mail.issue_verification(db, user)
+    if user.is_caregiver and user.caregiver_id:
+        background_tasks.add_task(email_service.send_caregiver_welcome_email, user.email, auth_mail.display_name(user), user.caregiver_id, raw, code)
+    else:
+        background_tasks.add_task(email_service.send_welcome_email, user.email, auth_mail.display_name(user), raw, code)
+
+
 @router.post("/resend-verification")
-def resend_verification(
-    request_data: ForgotPasswordRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """Resend email verification"""
-    user = db.query(User).filter(User.email == request_data.email).first()
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    if user.is_email_verified:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already verified"
-        )
-    
-    
-    db.query(EmailVerificationToken).filter(
-        EmailVerificationToken.user_id == user.id
-    ).delete()
-    
-    
-    verification_token = generate_token()
-    expires_at = datetime.utcnow() + timedelta(hours=24)
-    
-    verification = EmailVerificationToken(
-        user_id=user.id,
-        token=verification_token,
-        expires_at=expires_at
-    )
-    
-    db.add(verification)
-    db.commit()
-    
-    
-    background_tasks.add_task(
-        email_service.send_welcome_email,
-        user.email,
-        user.username or user.email.split('@')[0],
-        verification_token
-    )
-    
-    return {"message": "Verification email sent"}
+def resend_verification(request_data: ForgotPasswordRequest, background_tasks: BackgroundTasks, request: Request, db: Session = Depends(get_db)):
+    email = auth_mail.norm(request_data.email)
+    auth_mail.limit_requests("verify", email, request, 3, 3600)
+    user = auth_mail.user_by_email(db, email)
+    if user and not user.is_email_verified:
+        send_verification(db, user, background_tasks)
+    return {"message": GENERIC_VERIFY}
+
 
 @router.post("/login/otp/request")
-def request_otp_login(
-    request_data: RequestOTPLogin,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """Request OTP for login - EMAIL ONLY VERSION"""
-    user = db.query(User).filter(User.email == request_data.email).first()
-    
-    if not user:
-        
-        return {"message": "If your account exists, OTP will be sent to your email"}
-    
-    
-    otp = generate_otp()
-    expires_at = datetime.utcnow() + timedelta(minutes=10)
-    
-    
-    db.query(LoginOTP).filter(
-        LoginOTP.email == request_data.email,
-        LoginOTP.is_used == False
-    ).update({"is_used": True})
-    
-    
-    login_otp = LoginOTP(
-        email=request_data.email,
-        otp=otp,
-        expires_at=expires_at
-    )
-    
-    db.add(login_otp)
-    db.commit()
-    
-    
-    background_tasks.add_task(
-        email_service.send_otp_email,  
-        user.email,
-        user.username or user.email.split('@')[0],
-        otp
-    )
-    
-    return {
-        "message": "OTP sent to your email address",
-        "delivery_method": "email",
-        "email": user.email[:3] + "***" + user.email.split('@')[1]  
-    }
+def request_otp_login(request_data: RequestOTPLogin, background_tasks: BackgroundTasks, request: Request, db: Session = Depends(get_db)):
+    """Email a one-time sign-in code. Same answer whether or not the address has an account."""
+    email = auth_mail.norm(request_data.email)
+    auth_mail.limit_requests("otp", email, request, 3, 600)
+    user = auth_mail.user_by_email(db, email)
+    if user:
+        otp = generate_otp()
+        db.query(LoginOTP).filter(func.lower(LoginOTP.email) == email, LoginOTP.is_used == False).update({"is_used": True}, synchronize_session=False)  # noqa: E712
+        db.add(LoginOTP(email=email, otp=otp, expires_at=datetime.utcnow() + timedelta(minutes=10)))
+        db.commit()
+        background_tasks.add_task(email_service.send_otp_email, user.email, auth_mail.display_name(user), otp)
+    return {"message": GENERIC_OTP, "delivery_method": "email"}
+
 
 @router.post("/login/otp/verify")
-def verify_otp_login(
-    request_data: VerifyOTPLogin,
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    """Verify OTP for login - EMAIL ONLY"""
-    login_otp = db.query(LoginOTP).filter(
-        LoginOTP.email == request_data.email,
-        LoginOTP.otp == request_data.otp,
-        LoginOTP.is_used == False,
-        LoginOTP.expires_at > datetime.utcnow()
-    ).first()
-    
-    if not login_otp:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired OTP"
-        )
-    
-    user = db.query(User).filter(User.email == request_data.email).first()
+def verify_otp_login(request_data: VerifyOTPLogin, request: Request, db: Session = Depends(get_db)):
+    """Sign in with the emailed code. 5 wrong tries destroy it, it works once, and only for 10 minutes."""
+    email = auth_mail.norm(request_data.email)
+    try:
+        simple_limiter.check(f"wrong:otp:{email}", 5, 900, "Too many wrong codes. Please ask for a new code.")
+    except HTTPException:
+        db.query(LoginOTP).filter(func.lower(LoginOTP.email) == email, LoginOTP.is_used == False).update({"is_used": True}, synchronize_session=False)  # noqa: E712
+        db.commit()
+        raise
+    login_otp = (db.query(LoginOTP).filter(func.lower(LoginOTP.email) == email, LoginOTP.is_used == False, LoginOTP.expires_at > datetime.utcnow())  # noqa: E712
+                 .order_by(LoginOTP.id.desc()).first())
+    if not login_otp or not hmac.compare_digest(str(login_otp.otp or ""), request_data.otp):
+        simple_limiter.record(f"wrong:otp:{email}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That code is wrong or has expired")
+    user = auth_mail.user_by_email(db, email)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That code is wrong or has expired")
+
     login_otp.is_used = True
-    
-    
     user.last_login = datetime.utcnow()
+    user.is_email_verified = True                      # only the owner of the mailbox can have read the code
     db.commit()
-    
-    
-    access_token = create_access_token(
-        data={"sub": str(user.id)},
-        user_type="user"
+
+    access_token, refresh_token = create_auth_tokens(user, db)          # exactly what a password sign-in produces
+    create_session_log(db, user.id, request)
+    return TokenResponse(
+        access_token=access_token, refresh_token=refresh_token, token_type="bearer",
+        user_type="caregiver" if user.is_caregiver else "patient", user_id=user.id,
+        caregiver_id=user.caregiver_id if user.is_caregiver else None, email=user.email, username=user.username,
+        is_email_verified=user.is_email_verified, is_caregiver=user.is_caregiver, profile_image=getattr(user, "profile_image_url", None),
     )
-    
-    refresh_token = create_refresh_token(user.id, db)
-    
-    
-    session_token = generate_token()
-    device_info = request.headers.get("User-Agent", "Unknown")
-    ip_address = request.client.host if request.client else "Unknown"
-    
-    session = UserSession(
-        user_id=user.id,
-        session_token=session_token,
-        device_info=device_info,
-        ip_address=ip_address,
-        expires_at=datetime.utcnow() + timedelta(days=30)
-    )
-    
-    db.add(session)
-    db.commit()
-    
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "user_type": "user",
-        "user_id": user.id,
-        "email": user.email,
-        "is_email_verified": user.is_email_verified,
-        "message": "Login successful via email OTP"
-    }
+
 
 @router.post("/change-password")
 def change_password(
     request_data: ChangePasswordRequest,
-    current: Union[User, Admin] = Depends(get_current_user_or_admin),  
+    background_tasks: BackgroundTasks,
+    current: Union[User, Admin] = Depends(get_current_user_or_admin),
     db: Session = Depends(get_db)
 ):
-    """Change password (works for both users and admins)"""
+    """Change password (works for both users and admins). The person is told by email, and signed out of their other devices."""
     from app.auth.hashing import verify_password as verify_pass
-    
-    
-    if isinstance(current, Admin):
-        if not verify_pass(request_data.current_password, current.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is incorrect"
-            )
-        current.hashed_password = get_pass_hash(request_data.new_password)
-    else:
-        if not verify_pass(request_data.current_password, current.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is incorrect"
-            )
-        current.hashed_password = get_pass_hash(request_data.new_password)
-        
-        
+
+    if not verify_pass(request_data.current_password, current.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Your current password is not correct")
+    if verify_pass(request_data.new_password, current.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose a password that is different from your current one")
+    current.hashed_password = get_pass_hash(request_data.new_password)
+    if not isinstance(current, Admin):
         db.query(RefreshToken).filter(RefreshToken.user_id == current.id).update({"is_revoked": True})
-    
     db.commit()
-    
+    if not isinstance(current, Admin) and current.email:
+        background_tasks.add_task(email_service.send_password_changed_email, current.email, auth_mail.display_name(current))
     return {"message": "Password changed successfully"}
 
 class RefreshIn(BaseModel):
@@ -966,241 +823,6 @@ def get_user_sessions(
 
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-
-@router.get("/verify-email-page/{token}", response_class=HTMLResponse)
-def verify_email_page(
-    token: str,
-    db: Session = Depends(get_db)
-):
-    """HTML page to verify email (for direct links from emails)"""
-    
-    from app.models.auth import EmailVerificationToken
-    from app.models.user import User
-    
-    verification_token = db.query(EmailVerificationToken).filter(
-        EmailVerificationToken.token == token,
-        EmailVerificationToken.expires_at > datetime.utcnow()
-    ).first()
-    
-    if not verification_token:
-        return HTMLResponse(content="""
-        <html>
-            <head>
-                <title>Email Verification Failed</title>
-                <style>
-                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                    .success { color: green; }
-                    .error { color: red; }
-                    .container { max-width: 600px; margin: 0 auto; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1 class="error">Email Verification Failed</h1>
-                    <p>The verification link is invalid or has expired.</p>
-                    <p>Please request a new verification email.</p>
-                    <p><a href="/docs#/authentication/resend_verification">Request New Verification Email</a></p>
-                </div>
-            </body>
-        </html>
-        """)
-    
-    user = db.query(User).filter(User.id == verification_token.user_id).first()
-    if not user:
-        return HTMLResponse(content="""
-        <html>
-            <body>
-                <h1>User not found</h1>
-            </body>
-        </html>
-        """)
-    
-    
-    user.is_email_verified = True
-    db.delete(verification_token)
-    db.commit()
-    
-    return HTMLResponse(content=f"""
-    <html>
-        <head>
-            <title>Email Verified Successfully</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
-                .success {{ color: green; }}
-                .container {{ max-width: 600px; margin: 0 auto; }}
-                .button {{ 
-                    display: inline-block; 
-                    padding: 12px 24px; 
-                    background-color: #4CAF50; 
-                    color: white; 
-                    text-decoration: none; 
-                    border-radius: 5px; 
-                    margin: 20px 0; 
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1 class="success">Email Verified Successfully!</h1>
-                <p>Your email has been verified. You can now log in to your account.</p>
-                <p><strong>Email:</strong> {user.email}</p>
-                <a href="/docs#/authentication/login" class="button">Go to Login</a>
-                <p>Or use the API documentation to make login requests.</p>
-            </div>
-        </body>
-    </html>
-    """)
-
-@router.get("/reset-password-page", response_class=HTMLResponse)
-def reset_password_page(
-    token: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    """HTML page to reset password (for direct links from emails)"""
-    
-    from app.models.auth import PasswordResetToken
-    from app.models.user import User
-    
-    if not token:
-        
-        return HTMLResponse(content="""
-        <html>
-            <head>
-                <title>Reset Password</title>
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 50px; max-width: 500px; margin: 0 auto; }
-                    .form-group { margin-bottom: 20px; }
-                    label { display: block; margin-bottom: 5px; }
-                    input { width: 100%; padding: 10px; box-sizing: border-box; }
-                    button { padding: 12px 24px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
-                    .error { color: red; }
-                    .success { color: green; }
-                </style>
-            </head>
-            <body>
-                <h1>Reset Password</h1>
-                <p>Please enter your reset token and new password.</p>
-                <form id="resetForm">
-                    <div class="form-group">
-                        <label for="token">Reset Token (from email):</label>
-                        <input type="text" id="token" name="token" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">New Password:</label>
-                        <input type="password" id="password" name="password" minlength="8" required>
-                    </div>
-                    <button type="submit">Reset Password</button>
-                </form>
-                <div id="message"></div>
-                <script>
-                    document.getElementById('resetForm').addEventListener('submit', async (e) => {
-                        e.preventDefault();
-                        const token = document.getElementById('token').value;
-                        const password = document.getElementById('password').value;
-                        
-                        const response = await fetch('/auth/reset-password', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ token, new_password: password })
-                        });
-                        
-                        const result = await response.json();
-                        const messageDiv = document.getElementById('message');
-                        
-                        if (response.ok) {
-                            messageDiv.innerHTML = '<p class="success">' + result.message + '</p>';
-                            messageDiv.innerHTML += '<p>You can now <a href="/docs#/authentication/login">login</a> with your new password.</p>';
-                        } else {
-                            messageDiv.innerHTML = '<p class="error">' + (result.detail || 'Error resetting password') + '</p>';
-                        }
-                    });
-                </script>
-            </body>
-        </html>
-        """)
-    
-    
-    reset_token = db.query(PasswordResetToken).filter(
-        PasswordResetToken.token == token,
-        PasswordResetToken.is_used == False,
-        PasswordResetToken.expires_at > datetime.utcnow()
-    ).first()
-    
-    if not reset_token:
-        return HTMLResponse(content="""
-        <html>
-            <body>
-                <h1 class="error">Invalid or Expired Token</h1>
-                <p>The password reset token is invalid or has expired.</p>
-                <p>Please request a new password reset.</p>
-                <p><a href="/docs#/authentication/forgot_password">Request New Password Reset</a></p>
-            </body>
-        </html>
-        """)
-    
-    
-    return HTMLResponse(content=f"""
-    <html>
-        <head>
-            <title>Reset Password</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; padding: 50px; max-width: 500px; margin: 0 auto; }}
-                .form-group {{ margin-bottom: 20px; }}
-                label {{ display: block; margin-bottom: 5px; }}
-                input {{ width: 100%; padding: 10px; box-sizing: border-box; }}
-                button {{ padding: 12px 24px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }}
-                .error {{ color: red; }}
-                .success {{ color: green; }}
-            </style>
-        </head>
-        <body>
-            <h1>Set New Password</h1>
-            <p>Please enter your new password.</p>
-            <form id="resetForm">
-                <input type="hidden" id="token" value="{token}">
-                <div class="form-group">
-                    <label for="password">New Password (min 8 characters):</label>
-                    <input type="password" id="password" name="password" minlength="8" required>
-                </div>
-                <div class="form-group">
-                    <label for="confirm_password">Confirm Password:</label>
-                    <input type="password" id="confirm_password" name="confirm_password" minlength="8" required>
-                </div>
-                <button type="submit">Reset Password</button>
-            </form>
-            <div id="message"></div>
-            <script>
-                document.getElementById('resetForm').addEventListener('submit', async (e) => {{
-                    e.preventDefault();
-                    const token = document.getElementById('token').value;
-                    const password = document.getElementById('password').value;
-                    const confirmPassword = document.getElementById('confirm_password').value;
-                    
-                    if (password !== confirmPassword) {{
-                        document.getElementById('message').innerHTML = '<p class="error">Passwords do not match</p>';
-                        return;
-                    }}
-                    
-                    const response = await fetch('/auth/reset-password', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ token, new_password: password }})
-                    }});
-                    
-                    const result = await response.json();
-                    const messageDiv = document.getElementById('message');
-                    
-                    if (response.ok) {{
-                        messageDiv.innerHTML = '<p class="success">' + result.message + '</p>';
-                        messageDiv.innerHTML += '<p>You can now <a href="/docs#/authentication/login">login</a> with your new password.</p>';
-                    }} else {{
-                        messageDiv.innerHTML = '<p class="error">' + (result.detail || 'Error resetting password') + '</p>';
-                    }}
-                }});
-            </script>
-        </body>
-    </html>
-    """)
 
 @router.delete("/sessions/{session_id}")
 def revoke_session(

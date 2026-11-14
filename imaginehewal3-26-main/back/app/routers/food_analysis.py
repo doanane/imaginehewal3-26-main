@@ -70,45 +70,69 @@ async def analyze_meal(
     return response
 
 
+# Used when the AI is off or fails. One per day, in a fixed order, so the tip still changes every day. Each has a French and Arabic row in the app.
+TIP_FALLBACKS = [
+    "Drink water through the day and add a vegetable to every meal.",
+    "Take a 10 to 15 minute walk after your biggest meal.",
+    "Check your blood pressure at the same time each day and write it down.",
+    "Take your medicines at the same time every day, with a reminder.",
+    "Swap one sugary drink for water today.",
+    "Taste your food before you add salt. A little less each week adds up.",
+    "Stand up and stretch for two minutes every hour you sit.",
+    "Go to bed at the same time tonight. A steady routine helps you sleep better.",
+    "When you feel tense, breathe in for four counts and out for six counts, ten times.",
+    "Add one more portion of vegetables or fruit to your day.",
+    "Call or message someone you care about today. Staying connected is good for your health.",
+    "Get some daylight in the morning. It helps your sleep and your mood.",
+    "Take the stairs, or walk to the shop instead of taking a ride, once today.",
+    "Eat slowly and stop when you are comfortably full.",
+]
+TIP_LANGUAGES = {"fr": "French", "ar": "Arabic"}
+
+
 @router.get("/daily-tip")
 def get_daily_tip(
+    lang: str = "en",
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """One practical tip for today, written by AI for this person's conditions and today's readings. Same tip all day (remembered), so the
-    screen is instant and the free quota is not used on every visit."""
+    """One practical tip for today, written by AI for this person's conditions and recent real readings. The same tip all day (remembered), so the
+    screen is instant and the free quota is not used on every visit. Readings from the demo tool and old readings are never used as facts."""
     from datetime import date as _date
-    from app.services import ai_features, gemini_service as g
+    from app.services import ai_features, alert_rules, gemini_service as g
     from app.services.care_snapshot import latest_vitals
+    lang = lang if lang in TIP_LANGUAGES else "en"
     profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
     conds = [str(c) for c in ((profile.chronic_conditions if profile else None) or [])] if profile else []
     uid = current_user.id
-    vit = latest_vitals(db, uid)
+    real = alert_rules.trusted_readings(db, uid)
+    latest = real[0] if real else None
+    steps = latest_vitals(db, uid).get("steps")
+    today = _date.today()
 
     def make():
         if g.available():
             facts = [f"conditions: {', '.join(conds)}" if conds else "no recorded conditions"]
-            if vit.get("systolic") and vit.get("diastolic"):
-                facts.append(f"latest blood pressure {vit['systolic']}/{vit['diastolic']}")
-            if vit.get("heart_rate") is not None:
-                facts.append(f"latest heart rate {vit['heart_rate']} bpm")
-            if vit.get("steps") is not None:
-                facts.append(f"steps today {vit['steps']}")
+            if latest and latest.blood_pressure_systolic and latest.blood_pressure_diastolic:
+                facts.append(f"recent blood pressure {latest.blood_pressure_systolic}/{latest.blood_pressure_diastolic}")
+            if latest and latest.heart_rate is not None:
+                facts.append(f"recent heart rate {latest.heart_rate} bpm")
+            if steps is not None:
+                facts.append(f"steps today {steps}")
+            where = f" Write it in {TIP_LANGUAGES[lang]}." if lang != "en" else ""
             try:
                 tip = g.generate("You are a kind health coach in Ghana. Write ONE practical tip for today in at most 2 short sentences, plain words, "
-                                 "no markdown, no emoji. Use the facts only if relevant; never invent numbers; never advise changing a medicine.",
-                                 [g.text_content("user", "Facts: " + "; ".join(facts))], temperature=0.7, max_tokens=120, timeout=15)
+                                 "no markdown, no emoji. Use the facts only if relevant; never invent numbers; never diagnose or alarm; never advise changing a medicine." + where,
+                                 [g.text_content("user", "Facts: " + "; ".join(facts))], temperature=0.7, max_tokens=140, timeout=15)
                 if tip:
-                    return {"tip": tip.strip()[:300], "ai": True}
+                    return {"tip": tip.strip()[:320], "ai": True}
             except g.GeminiError:
                 pass
-        import random
-        return {"tip": random.choice([
-            "Drink water through the day and add a vegetable to every meal.", "Take a 10 to 15 minute walk after your biggest meal.",
-            "Check your blood pressure at the same time each day and write it down.", "Take your medicines at the same time every day, with a reminder."]), "ai": False}
+        return {"tip": TIP_FALLBACKS[(uid + today.toordinal()) % len(TIP_FALLBACKS)], "ai": False}
 
-    out = ai_features.cached(("tip", uid, _date.today().isoformat()), 20 * 3600, make)
-    return {"success": True, "tip": out["tip"], "personalized": bool(conds) or out["ai"], "timestamp": datetime.now().isoformat()}
+    out = ai_features.cached(("tip", uid, today.isoformat(), lang), 20 * 3600, make)
+    return {"success": True, "tip": out["tip"], "ai": out["ai"], "language": lang, "date": today.isoformat(),
+            "personalized": bool(conds) or out["ai"], "timestamp": datetime.now().isoformat()}
 
 
 @router.get("/recent-meals", response_model=list)
