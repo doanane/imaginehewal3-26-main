@@ -1,0 +1,11 @@
+Quick logins (local development only; created automatically when the backend starts)
+
+Role        Sign in with                         Password      Where
+Patient     patient@gmail.com  (also nii@gmail.com)  StrongPass1   Mobile app
+Caregiver   caregiver@gmail.com                  StrongPass1   Mobile app (same app, caregiver role)
+Doctor      Doctor ID  DOC00001                  StrongPass1   Website: http://<backend>:8000/doctor/
+
+The caregiver and the doctor are already linked to both demo patients, so all three roles show the same people.
+Through ngrok the doctor website is at https://extraprofessional-brendan-palest.ngrok-free.dev/doctor/
+A real patient links their doctor in the app: Me > My doctor > enter the Doctor ID.
+These accounts are only created when ENVIRONMENT=development. Never ship them to production.

@@ -1,0 +1,145 @@
+2026-01-09 09:24:26.270135: Entering api_request for /auth/signup
+2026-01-09 09:24:26.806770: Response from http://127.0.0.1:8001/auth/signup: 200
+2026-01-09 09:24:26.806770: Entering api_request for /auth/signup/caregiver
+2026-01-09 09:24:27.370890: Response from http://127.0.0.1:8001/auth/signup/caregiver: 200
+2026-01-09 09:24:27.373130: Entering api_request for /auth/login
+2026-01-09 09:24:27.828937: Response from http://127.0.0.1:8001/auth/login: 200
+2026-01-09 09:24:27.828937: Entering api_request for /auth/login
+2026-01-09 09:24:28.297978: Response from http://127.0.0.1:8001/auth/login: 200
+2026-01-09 09:24:28.299959: Entering api_request for /users/profile
+2026-01-09 09:24:28.334711: Response from http://127.0.0.1:8001/users/profile: 200
+2026-01-09 09:24:28.335731: Entering api_request for /users/profile
+2026-01-09 09:24:28.381403: Response from http://127.0.0.1:8001/users/profile: 200
+2026-01-09 09:24:28.381403: Entering api_request for /users/search
+2026-01-09 09:24:28.397479: Response from http://127.0.0.1:8001/users/search: 200
+2026-01-09 09:24:28.399002: Entering api_request for /caregivers/connect-patient
+2026-01-09 09:24:28.447689: Response from http://127.0.0.1:8001/caregivers/connect-patient: 200
+2026-01-09 09:24:28.449405: Entering api_request for /caregivers/requests/incoming
+2026-01-09 09:24:28.468354: Response from http://127.0.0.1:8001/caregivers/requests/incoming: 200
+2026-01-09 09:24:28.469878: Entering api_request for /caregivers/requests/1/respond
+2026-01-09 09:24:28.508441: Response from http://127.0.0.1:8001/caregivers/requests/1/respond: 200
+2026-01-09 09:24:28.508441: Entering api_request for /caregivers/patients
+2026-01-09 09:24:28.531266: Response from http://127.0.0.1:8001/caregivers/patients: 200
+2026-01-09 09:24:28.533013: Entering api_request for /health/health-data
+2026-01-09 09:24:28.565861: Response from http://127.0.0.1:8001/health/health-data: 200
+2026-01-09 09:24:28.567379: Entering api_request for /health/dashboard
+2026-01-09 09:24:28.599407: Response from http://127.0.0.1:8001/health/dashboard: 200
+2026-01-09 09:24:28.600406: Entering api_request for /health/food-log
+2026-01-09 09:24:28.628902: Response from http://127.0.0.1:8001/health/food-log: 200
+2026-01-09 09:24:28.631381: Entering api_request for /notifications/
+2026-01-09 09:24:28.650083: Response from http://127.0.0.1:8001/notifications/: 200
+2026-01-09 09:24:28.652453: Entering api_request for /notifications/mark-read/7
+2026-01-09 09:24:28.683435: Response from http://127.0.0.1:8001/notifications/mark-read/7: 200
+2026-01-09 09:24:28.685680: Entering api_request for /messages/send
+2026-01-09 09:24:28.721003: Response from http://127.0.0.1:8001/messages/send: 200
+2026-01-09 09:24:28.721003: Entering api_request for /messages/conversations
+2026-01-09 09:24:28.747933: Response from http://127.0.0.1:8001/messages/conversations: 200
+2026-01-09 09:24:28.749599: Entering api_request for /messages/conversation/9
+2026-01-09 09:24:28.767274: Response from http://127.0.0.1:8001/messages/conversation/9: 200
+2026-01-09 09:24:28.768284: Entering api_request for /caregivers/dashboard
+2026-01-09 09:24:28.781094: Response from http://127.0.0.1:8001/caregivers/dashboard: 200
+2026-01-09 09:24:28.781678: Entering api_request for /caregiver/tasks
+2026-01-09 09:24:28.817788: Response from http://127.0.0.1:8001/caregiver/tasks: 500
+2026-01-09 09:24:28.818791: Entering api_request for /caregiver/tasks
+2026-01-09 09:24:28.845402: Response from http://127.0.0.1:8001/caregiver/tasks: 500
+2026-01-09 09:24:28.846905: Entering api_request for /caregiver/schedule/
+2026-01-09 09:24:28.891558: Response from http://127.0.0.1:8001/caregiver/schedule/: 500
+2026-01-09 09:24:28.892922: Entering api_request for /caregiver/schedule/
+2026-01-09 09:24:28.912229: Response from http://127.0.0.1:8001/caregiver/schedule/: 500
+2026-01-09 09:24:28.913983: Entering api_request for /caregiver/analytics/patient/8
+2026-01-09 09:24:28.942053: Response from http://127.0.0.1:8001/caregiver/analytics/patient/8: 500
+2026-01-09 09:24:28.943759: Entering api_request for /caregivers/patients/8
+2026-01-09 09:24:28.976457: Response from http://127.0.0.1:8001/caregivers/patients/8: 200
+2026-01-09 09:24:28.977477: Entering api_request for /caregivers/patients
+2026-01-09 09:24:28.995086: Response from http://127.0.0.1:8001/caregivers/patients: 200
+2026-01-09 10:38:29.833181: Entering api_request for /auth/signup
+2026-01-09 10:38:31.840239: Connection Error to http://127.0.0.1:8001/auth/signup: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /auth/signup (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:31.842237: Entering api_request for /auth/signup/caregiver
+2026-01-09 10:38:33.858491: Connection Error to http://127.0.0.1:8001/auth/signup/caregiver: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /auth/signup/caregiver (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:33.860448: Entering api_request for /auth/login
+2026-01-09 10:38:35.864894: Connection Error to http://127.0.0.1:8001/auth/login: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /auth/login (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:35.865894: Entering api_request for /auth/login
+2026-01-09 10:38:37.872966: Connection Error to http://127.0.0.1:8001/auth/login: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /auth/login (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:37.873967: Entering api_request for /users/profile
+2026-01-09 10:38:39.891142: Connection Error to http://127.0.0.1:8001/users/profile: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /users/profile (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:39.892143: Entering api_request for /users/profile
+2026-01-09 10:38:41.907759: Connection Error to http://127.0.0.1:8001/users/profile: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /users/profile (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:41.909754: Entering api_request for /users/search
+2026-01-09 10:38:43.913847: Connection Error to http://127.0.0.1:8001/users/search: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /users/search?query=patient_1767955109%40test.com (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:43.916849: Entering api_request for /caregivers/connect-patient
+2026-01-09 10:38:45.920787: Connection Error to http://127.0.0.1:8001/caregivers/connect-patient: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /caregivers/connect-patient (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:45.929804: Entering api_request for /caregivers/requests/incoming
+2026-01-09 10:38:47.934708: Connection Error to http://127.0.0.1:8001/caregivers/requests/incoming: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /caregivers/requests/incoming (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:47.936711: Entering api_request for /caregivers/patients
+2026-01-09 10:38:49.953307: Connection Error to http://127.0.0.1:8001/caregivers/patients: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /caregivers/patients (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:49.956202: Entering api_request for /health/health-data
+2026-01-09 10:38:51.961543: Connection Error to http://127.0.0.1:8001/health/health-data: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /health/health-data (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:51.962543: Entering api_request for /health/dashboard
+2026-01-09 10:38:53.982236: Connection Error to http://127.0.0.1:8001/health/dashboard: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /health/dashboard (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:53.984092: Entering api_request for /health/food-log
+2026-01-09 10:38:56.000424: Connection Error to http://127.0.0.1:8001/health/food-log: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /health/food-log (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:56.002692: Entering api_request for /notifications/
+2026-01-09 10:38:58.016945: Connection Error to http://127.0.0.1:8001/notifications/: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /notifications/ (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:38:58.018887: Entering api_request for /messages/send
+2026-01-09 10:39:00.035385: Connection Error to http://127.0.0.1:8001/messages/send: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /messages/send (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:39:00.036349: Entering api_request for /messages/conversations
+2026-01-09 10:39:02.051250: Connection Error to http://127.0.0.1:8001/messages/conversations: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /messages/conversations (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:39:02.052239: Entering api_request for /messages/conversation/None
+2026-01-09 10:39:04.068572: Connection Error to http://127.0.0.1:8001/messages/conversation/None: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /messages/conversation/None (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:39:04.070568: Entering api_request for /caregivers/dashboard
+2026-01-09 10:39:06.077766: Connection Error to http://127.0.0.1:8001/caregivers/dashboard: HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /caregivers/dashboard (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it"))
+2026-01-09 10:39:06.079767: Entering api_request for /caregiver/tasks
+2026-01-09 10:39:12.399245: Entering api_request for /auth/signup
+2026-01-09 10:39:21.585211: Response from http://localhost:8000/auth/signup: 200
+2026-01-09 10:39:21.586213: Entering api_request for /auth/signup/caregiver
+2026-01-09 10:39:26.291915: Response from http://localhost:8000/auth/signup/caregiver: 200
+2026-01-09 10:39:26.296057: Entering api_request for /auth/login
+2026-01-09 10:39:32.008338: Response from http://localhost:8000/auth/login: 200
+2026-01-09 10:39:32.009663: Entering api_request for /auth/login
+2026-01-09 10:39:36.538494: Response from http://localhost:8000/auth/login: 200
+2026-01-09 10:39:36.541500: Entering api_request for /users/profile
+2026-01-09 10:39:40.630224: Response from http://localhost:8000/users/profile: 200
+2026-01-09 10:39:40.633162: Entering api_request for /users/profile
+2026-01-09 10:39:44.413842: Response from http://localhost:8000/users/profile: 200
+2026-01-09 10:39:44.416816: Entering api_request for /users/search
+2026-01-09 10:39:47.221458: Response from http://localhost:8000/users/search: 200
+2026-01-09 10:39:47.225460: Entering api_request for /caregivers/connect-patient
+2026-01-09 10:39:53.323338: Response from http://localhost:8000/caregivers/connect-patient: 200
+2026-01-09 10:39:53.325340: Entering api_request for /caregivers/requests/incoming
+2026-01-09 10:39:55.973907: Response from http://localhost:8000/caregivers/requests/incoming: 200
+2026-01-09 10:39:55.974908: Entering api_request for /caregivers/requests/1/respond
+2026-01-09 10:40:00.181490: Response from http://localhost:8000/caregivers/requests/1/respond: 200
+2026-01-09 10:40:00.182492: Entering api_request for /caregivers/patients
+2026-01-09 10:40:03.152524: Response from http://localhost:8000/caregivers/patients: 200
+2026-01-09 10:40:03.155524: Entering api_request for /health/health-data
+2026-01-09 10:40:06.329242: Response from http://localhost:8000/health/health-data: 200
+2026-01-09 10:40:06.331246: Entering api_request for /health/dashboard
+2026-01-09 10:40:10.630158: Response from http://localhost:8000/health/dashboard: 200
+2026-01-09 10:40:10.631147: Entering api_request for /health/food-log
+2026-01-09 10:40:13.595619: Response from http://localhost:8000/health/food-log: 200
+2026-01-09 10:40:13.596621: Entering api_request for /notifications/
+2026-01-09 10:40:16.255310: Response from http://localhost:8000/notifications/: 200
+2026-01-09 10:40:16.256329: Entering api_request for /notifications/mark-read/1
+2026-01-09 10:40:19.332550: Response from http://localhost:8000/notifications/mark-read/1: 200
+2026-01-09 10:40:19.336566: Entering api_request for /messages/send
+2026-01-09 10:40:23.528980: Response from http://localhost:8000/messages/send: 200
+2026-01-09 10:40:23.531517: Entering api_request for /messages/conversations
+2026-01-09 10:40:37.462934: Connection Error to http://localhost:8000/messages/conversations: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2026-01-09 10:40:37.465939: Entering api_request for /messages/conversation/5
+2026-01-09 10:40:50.563443: Response from http://localhost:8000/messages/conversation/5: 200
+2026-01-09 10:40:50.564409: Entering api_request for /caregivers/dashboard
+2026-01-09 10:40:53.220725: Response from http://localhost:8000/caregivers/dashboard: 200
+2026-01-09 10:40:53.225094: Entering api_request for /caregiver/tasks
+2026-01-09 10:40:57.424731: Response from http://localhost:8000/caregiver/tasks: 500
+2026-01-09 10:40:57.426702: Entering api_request for /caregiver/tasks
+2026-01-09 10:41:00.701611: Response from http://localhost:8000/caregiver/tasks: 500
+2026-01-09 10:41:00.709045: Entering api_request for /caregiver/schedule/
+2026-01-09 10:41:04.962051: Response from http://localhost:8000/caregiver/schedule/: 500
+2026-01-09 10:41:04.963050: Entering api_request for /caregiver/schedule/
+2026-01-09 10:41:16.470955: Response from http://localhost:8000/caregiver/schedule/: 500
+2026-01-09 10:41:16.474970: Entering api_request for /caregiver/analytics/patient/4
+2026-01-09 10:41:19.220438: Response from http://localhost:8000/caregiver/analytics/patient/4: 500
+2026-01-09 10:41:19.223652: Entering api_request for /caregivers/patients/4
+2026-01-09 10:41:23.559324: Response from http://localhost:8000/caregivers/patients/4: 200
+2026-01-09 10:41:23.559324: Entering api_request for /caregivers/patients
+2026-01-09 10:41:26.365011: Response from http://localhost:8000/caregivers/patients: 200

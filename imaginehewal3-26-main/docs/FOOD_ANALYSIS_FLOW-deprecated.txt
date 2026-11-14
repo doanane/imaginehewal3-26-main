@@ -1,0 +1,59 @@
+### Des just changed the flow of the food analysis
+
+FOOD ANALYSIS FLOW - food-log.tsx
+==========================================
+
+1. USER INITIATES
+   - Clicks "Scan Food with AI" button
+   - Alert shows: Take Photo | Choose from Gallery | Cancel
+
+2. CAMERA/GALLERY
+   - Requests permissions (camera or gallery)
+   - Opens image picker (4:3 aspect, 50% quality, editable)
+   - User captures/selects photo → gets image URI
+
+3. ANALYZING (analyzeImage function)
+   - Shows loading overlay: "Analyzing your food..."
+   - Creates FormData with:
+     * meal_type: 'breakfast' (default)
+     * file: {uri, name, type}
+   - Calls: api.analyzeMeal(formData)
+
+4. BACKEND PROCESSING
+   - Azure AI Vision → detects food
+   - OpenAI → analyzes nutrition + health impact
+   - Returns: detected_food, nutrients, diet_score, recommendations
+
+5. AUTO-FILL FORM
+   - Pre-populates fields:
+     * Food Name → detected_food
+     * Calories → nutrients.calories
+     * Protein → nutrients.protein
+     * Carbs → nutrients.carbs
+     * Fat → nutrients.fat
+
+6. DISPLAY RESULTS
+   - Opens modal with:
+     * Food name & description
+     * Diet score (color-coded: green ≥70, orange <70)
+     * Nutrition grid (calories, protein, carbs, fat)
+     * AI recommendations (primary + secondary)
+   - "Use This Data" button → closes modal
+
+7. USER REVIEW & SUBMIT
+   - Form pre-filled with AI data
+   - User can edit/add optional fields
+   - Click "Log Food" → calls handleSubmit()
+   - Success toast → navigates back
+
+KEY FUNCTIONS:
+- handleImageSelection() → shows picker options
+- takePicture() → launches camera
+- pickImage() → launches gallery
+- analyzeImage(uri) → sends to API, pre-fills form
+- handleSubmit() → saves food log
+
+API ENDPOINT:
+POST /api/analyze-meal
+Form data: meal_type, file
+Response: detected_food, nutrients, diet_score, recommendations
