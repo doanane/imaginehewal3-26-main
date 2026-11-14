@@ -78,7 +78,7 @@ export default function Scene3D() {
       const t = clock.getElapsedTime();
       group.rotation.y += ((reduce ? -0.35 : Math.sin(t * 0.25) * 0.5 + mx * 0.6) - group.rotation.y) * 0.04;
       group.rotation.x += ((reduce ? 0.1 : my * 0.3 + 0.08) - group.rotation.x) * 0.04;
-      group.position.y = reduce ? 0 : Math.sin(t * 0.6) * 0.08;
+      group.position.y = 1.5 + (reduce ? 0 : Math.sin(t * 0.6) * 0.08);   // held high so the headline stays readable
       ring.rotation.z = t * 0.12;
       dots.rotation.y = t * 0.02;
       renderer.render(scene, camera);
