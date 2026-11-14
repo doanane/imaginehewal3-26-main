@@ -46,10 +46,10 @@ class Settings(BaseModel):
     )
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
-        os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+        os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "43200")
     )
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(
-        os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")
+        os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "90")
     )  # noqa
 
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
@@ -132,10 +132,10 @@ class Settings(BaseModel):
     )
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
-        os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+        os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "43200")
     )
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(
-        os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7")
+        os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "90")
     )
 
 
