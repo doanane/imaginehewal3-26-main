@@ -18,23 +18,24 @@ from app.models.safety import MedicationLog
 from app.models.trust import WellbeingCheckin
 from app.models.user import User
 from app.services import activity_data as ad
+from app.services import explore_media as media
 
 # ------------------------------------------------------------------ challenges
 CHALLENGES: Dict[str, dict] = {
     "steps": {"title": "Step up week", "icon": "walk-outline", "unit": "steps", "target": 50000, "domain": "Activity",
-              "about": "Take 50,000 steps between Monday and Sunday, about 7,000 a day. Steps come from your phone or watch."},
+              "tagline": "Walk 50,000 steps this week", "about": "Take 50,000 steps between Monday and Sunday, about 7,000 a day. Steps come from your phone or watch."},
     "active": {"title": "150 active minutes", "icon": "flash-outline", "unit": "minutes", "target": 150, "domain": "Activity",
-               "about": "Health agencies suggest at least 150 minutes of moderate activity a week. Watch active minutes and recorded workouts both count."},
+               "tagline": "Be active for 150 minutes this week", "about": "Health agencies suggest at least 150 minutes of moderate activity a week. Watch active minutes and recorded workouts both count."},
     "sleep": {"title": "Rested week", "icon": "moon-outline", "unit": "nights", "target": 5, "domain": "Sleep",
-              "about": "Sleep at least 7 hours on 5 nights this week. Sleep comes from Apple Health or what you log."},
+              "tagline": "Sleep 7 hours or more on 5 nights", "about": "Sleep at least 7 hours on 5 nights this week. Sleep comes from Apple Health or what you log."},
     "meals": {"title": "Mindful meals", "icon": "restaurant-outline", "unit": "days", "target": 5, "domain": "Nutrition",
-              "about": "Log at least one meal on 5 days this week. Noticing what you eat is the first step to changing it."},
+              "tagline": "Log a meal on 5 days this week", "about": "Log at least one meal on 5 days this week. Noticing what you eat is the first step to changing it."},
     "meds": {"title": "On track with medicines", "icon": "medkit-outline", "unit": "days", "target": 5, "domain": "Habits",
-             "about": "Mark your medicines as taken on 5 days this week."},
+             "tagline": "Take your medicines on 5 days", "about": "Mark your medicines as taken on 5 days this week."},
     "mind": {"title": "Check in with yourself", "icon": "heart-outline", "unit": "check-in", "target": 1, "domain": "Mind",
-             "about": "Complete the short wellbeing check-in once this week. Your answers stay private."},
+             "tagline": "Complete one wellbeing check-in", "about": "Complete the short wellbeing check-in once this week. Your answers stay private."},
     "learn": {"title": "Learn something new", "icon": "book-outline", "unit": "articles", "target": 3, "domain": "Learning",
-              "about": "Read 3 articles in the library this week."},
+              "tagline": "Read 3 articles this week", "about": "Read 3 articles in the library this week."},
 }
 
 
@@ -86,9 +87,46 @@ def progress_value(db: Session, user_id: int, key: str, ws: date, today: Optiona
     return 0
 
 
+def daily_values(db: Session, user_id: int, key: str, ws: date, today: Optional[date] = None) -> Optional[List[Optional[float]]]:
+    """One value per day, Monday first, for the bar chart. Days that have not happened yet are None. Challenges counted once a week have no chart."""
+    today = today or date.today()
+    days = [ws + timedelta(days=i) for i in range(7)]
+    end = min(today, ws + timedelta(days=6))
+    vals: Dict[date, float] = {}
+    if key == "steps":
+        vals = {d: float(min(v, 60000)) for d, v in ad.daily_steps(db, [user_id], ws, end)[user_id].items()}
+    elif key == "active":
+        rows = db.query(HealthData).filter(HealthData.user_id == user_id, HealthData.date >= datetime.combine(ws, time.min),
+                                           HealthData.date < datetime.combine(ws + timedelta(days=7), time.min)).all()
+        for r in rows:
+            if r.active_minutes:
+                vals[r.date.date()] = max(vals.get(r.date.date(), 0.0), float(r.active_minutes))
+        wm: Dict[date, float] = {}
+        for w in ad.workouts_between(db, [user_id], ws, end)[user_id]:
+            wm[w.started_at.date()] = wm.get(w.started_at.date(), 0.0) + w.duration_s / 60
+        for d, m in wm.items():
+            vals[d] = max(vals.get(d, 0.0), m)          # the watch and a recorded workout describe the same time, so take the larger
+    elif key == "sleep":
+        lo, hi = _span(ws)
+        for r in db.query(SleepSession).filter(SleepSession.user_id == user_id, SleepSession.end >= lo, SleepSession.end < hi).all():
+            vals[r.end.date()] = round(r.total_min / 60, 1)
+    elif key == "meals":
+        lo, hi = _span(ws)
+        for (t,) in db.query(FoodLog.created_at).filter(FoodLog.user_id == user_id, FoodLog.created_at >= lo, FoodLog.created_at < hi).all():
+            if t:
+                vals[t.date()] = vals.get(t.date(), 0.0) + 1
+    elif key == "meds":
+        for d, n in db.query(MedicationLog.day, func.count(MedicationLog.id)).filter(MedicationLog.user_id == user_id, MedicationLog.status == "taken",
+                                                                                      MedicationLog.day >= ws, MedicationLog.day <= end).group_by(MedicationLog.day).all():
+            vals[d] = float(n)
+    else:
+        return None
+    return [(vals.get(d, 0.0) if d <= end else None) for d in days]
+
+
 def _card(key: str, value: Optional[int], joined: bool, members: int, days_left: int) -> dict:
     c = CHALLENGES[key]
-    out = {"key": key, "title": c["title"], "icon": c["icon"], "unit": c["unit"], "target": c["target"], "domain": c["domain"], "about": c["about"],
+    out = {"key": key, "title": c["title"], "tagline": c["tagline"], "image": media.url(key), "icon": c["icon"], "unit": c["unit"], "target": c["target"], "domain": c["domain"], "about": c["about"],
            "joined": joined, "members": members if members >= 5 else None, "days_left": days_left}
     if joined and value is not None:
         out.update({"value": min(value, c["target"] * 3), "percent": min(100, round(value * 100 / c["target"])), "done": value >= c["target"]})
@@ -225,6 +263,6 @@ def list_groups(db: Session, user: User) -> List[dict]:
     out = []
     for k, g in GROUPS.items():
         n = int(counts.get(k, 0))
-        out.append({"key": k, "title": g["title"], "icon": g["icon"], "about": g["about"], "joined": k in mine,
+        out.append({"key": k, "title": g["title"], "icon": g["icon"], "about": g["about"], "image": media.url("g_" + k), "joined": k in mine,
                     "members": n if n >= GROUP_MIN_PUBLIC else None})       # a small count could identify people, so it is hidden under 5
     return out
