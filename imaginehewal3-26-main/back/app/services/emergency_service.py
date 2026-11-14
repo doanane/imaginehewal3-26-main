@@ -162,6 +162,8 @@ def create_event(db: Session, user: User, trigger: str, reason: str, severity: s
     db.refresh(ev)
     hub.send_from_thread(user.id, {"type": "emergency.started", "auto": trigger == "auto_vitals",
                                    "grace_seconds": grace_s, "event": event_dict(db, ev)})
+    from app.services.care_chat import refresh_doctor
+    refresh_doctor(db, user.id, "emergency")
     if grace_s == 0:
         advance(db, ev)
     return ev
@@ -192,6 +194,8 @@ def _notify_caregivers(db: Session, event: SosEvent, patient: User, attempt: int
     body = f"{event.reason}." + (f" Location: {loc}" if loc else " Location is being shared.")
     payload = {"type": "alert", "kind": "emergency", "attempt": attempt, "escalated": escalated,
                "message": f"{headline}. {event.reason}", "event": event_dict(db, event)}
+    from app.services import push
+    push.notify_users([c.id for c in caregivers], f"Emergency: {headline}", "Open HEWAL3 now to respond.", {"type": "emergency", "event_id": event.id}, urgent=True)
     for cg in caregivers:
         db.add(Notification(user_id=cg.id, notification_type="emergency", title=headline, message=body, sender_type="system"))
         hub.send_from_thread(cg.id, payload)
@@ -257,6 +261,8 @@ def _broadcast(db: Session, event: SosEvent, payload: dict) -> None:
     caregivers, _ = _recipients(db, event.user_id)
     for uid in {event.user_id, *[c.id for c in caregivers]}:
         hub.send_from_thread(uid, payload)
+    from app.services.care_chat import refresh_doctor
+    refresh_doctor(db, event.user_id, "emergency")
 
 
 def acknowledge(db: Session, event: SosEvent, user: User) -> bool:
