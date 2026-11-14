@@ -7,7 +7,7 @@ import { ago, bpText, GROUP_LABEL, initials, show } from './util';
 
 const FILTERS: (Group | 'all')[] = ['all', 'critical', 'monitor', 'stable', 'healthy', 'no_data'];
 
-export default function PatientsPage({ overview, error }: { overview: Overview | null; error: string | null }) {
+export default function PatientsPage({ overview, error, unread }: { overview: Overview | null; error: string | null; unread: Record<string, number> }) {
   const [filter, setFilter] = useState<Group | 'all'>('all');
   const [q, setQ] = useState('');
   const rows = useMemo(() => {
@@ -41,7 +41,7 @@ export default function PatientsPage({ overview, error }: { overview: Overview |
                 <a href={`#/patient/${p.patient_id}`} className="prow">
                   <span className={`avatar lg ${p.group}`}>{initials(p.name)}</span>
                   <div className="prow-id">
-                    <b>{p.name}</b>
+                    <b>{p.name}{unread[p.patient_id] > 0 && <em className="count msg inline" aria-label={`${unread[p.patient_id]} unread`}>{unread[p.patient_id]}</em>}</b>
                     <small>{[p.age ? `${p.age} yrs` : null, p.gender, p.identifier].filter(Boolean).join(', ')}</small>
                     {p.conditions.length > 0 && <small>{p.conditions.join(', ')}</small>}
                   </div>
