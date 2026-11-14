@@ -8,6 +8,8 @@ from collections import Counter
 from datetime import date, timedelta
 from typing import Dict, List, Optional, Tuple
 
+from app.services import behavior_l10n as l10n
+
 # Share of the gap (baseline -> goal) asked per day at each level.
 LEVEL_FRACTION = {1: 0.15, 2: 0.30, 3: 0.50, 4: 0.75, 5: 1.0}
 COMEBACK_FRACTION = 0.10  # deliberately tiny "welcome back" step
@@ -23,6 +25,9 @@ BEHAVIORS: Dict[str, dict] = {
               "default_baseline": 5.5, "default_goal": 7.5},
     "smoking": {"unit": "cigarettes per day", "direction": "down", "step": 1,
                 "default_baseline": 10, "default_goal": 0},
+    # Minutes of any movement, so people who cannot or prefer not to count steps (wheelchair, limited mobility, seated work) are not left out.
+    "activity": {"unit": "active minutes", "direction": "up", "step": 5,
+                 "default_baseline": 10, "default_goal": 30},
 }
 
 BARRIERS = ["time", "tired", "forgot", "motivation", "weather", "access",
@@ -54,6 +59,20 @@ TECHNIQUES: Dict[str, Tuple[str, str]] = {
     "Self-compassion after setbacks": (
         "Treating a lapse as normal, not as failure, makes people more likely to return.",
         "Not a substitute for professional support if you are struggling."),
+}
+
+# Behaviour Change Technique Taxonomy v1 (Michie et al., 2013, Annals of Behavioral Medicine). Evidence strength is a plain-language summary of how
+# consistently these techniques help groups of people in research; it is NOT a promise for one person, which is why the app also measures
+# what works for each individual (see learning_service) and shows it back.
+TECHNIQUE_META: Dict[str, dict] = {
+    "Small steps (graded tasks)": {"bct_code": "8.7", "bct_name": "Graded tasks", "evidence": "moderate"},
+    "Habit stacking": {"bct_code": "8.3", "bct_name": "Habit formation", "evidence": "moderate"},
+    "Implementation intention": {"bct_code": "1.4", "bct_name": "Action planning", "evidence": "strong"},
+    "Self-monitoring": {"bct_code": "2.3", "bct_name": "Self-monitoring of behaviour", "evidence": "strong"},
+    "Substitution": {"bct_code": "8.2", "bct_name": "Behaviour substitution", "evidence": "moderate"},
+    "Coping planning": {"bct_code": "1.2", "bct_name": "Problem solving", "evidence": "moderate"},
+    "Social support": {"bct_code": "3.1", "bct_name": "Social support (unspecified)", "evidence": "moderate"},
+    "Self-compassion after setbacks": {"bct_code": "11.2", "bct_name": "Reduce negative emotions (closest match)", "evidence": "emerging"},
 }
 
 BARRIER_TWEAK: Dict[str, Tuple[str, str]] = {
@@ -92,6 +111,15 @@ BASE_ACTIONS = {
         ("Be in bed in time for {t:g} hours of sleep",
          "Do the same wind-down step each night, e.g. wash, then lights down.", "Habit stacking"),
     ],
+    "activity": [
+        ("Be active for {t} minutes today",
+         "Anything that gets you moving counts: walking, seated arm and leg exercises, stretching, dancing or housework. Short blocks are fine.",
+         "Small steps (graded tasks)"),
+        ("Move for {t} minutes today, in short blocks",
+         "Decide when: for example after each meal. Five minutes three times adds up.", "Implementation intention"),
+        ("Do something you enjoy that moves you for {t} minutes",
+         "Music, a seated workout, a walk with someone, or helping at home. Pick what you like.", "Social support"),
+    ],
     "smoking": [
         ("Keep to {t} cigarette(s) or fewer today",
          "Delay the first one by 30 minutes and note when cravings come.", "Self-monitoring"),
@@ -109,6 +137,11 @@ MESSAGES = {
         "level_down": "We'll make tomorrow's step a little easier. No pressure, your progress stays.",
         "welcome_back": "Welcome back! Nothing has been reset. Let's start with a very small step.",
         "ask_barrier": "What got in the way recently? Tap one so we can adjust your plan.",
+        "nudge_1": "A very small step is waiting whenever you are ready. Nothing has been lost.",
+        "nudge_2": "Thinking of you. Even one minute counts today, or tell us what got in the way.",
+        "nudge_paused": "We will stop reminding you now. Your plan and progress are safe and will be here when you want them.",
+        "supporter_prompt": "Someone you support could use a kind word today.",
+        "safety_pause": "We held today's step at the same size while your health is checked.",
     },
     "ar": {
         "done": "أحسنت! هذا يُحتسب. الخطوات الصغيرة تتراكم.",
@@ -118,6 +151,11 @@ MESSAGES = {
         "level_down": "سنجعل خطوة الغد أسهل قليلًا. لا ضغط، تقدّمك باقٍ.",
         "welcome_back": "أهلًا بعودتك! لم يُعاد ضبط أي شيء. لنبدأ بخطوة صغيرة جدًا.",
         "ask_barrier": "ما الذي أعاقك مؤخرًا؟ اختر سببًا لنعدّل خطتك.",
+        "nudge_1": "خطوة صغيرة جدًا بانتظارك متى شئت. لم يضع شيء.",
+        "nudge_2": "نفكر بك. دقيقة واحدة تكفي اليوم، أو أخبرنا بما أعاقك.",
+        "nudge_paused": "سنتوقف عن التذكير الآن. خطتك وتقدّمك محفوظان وسيكونان في انتظارك.",
+        "supporter_prompt": "شخص تدعمه قد يسعد بكلمة طيبة اليوم.",
+        "safety_pause": "أبقينا خطوة اليوم بنفس الحجم ريثما تُراجَع حالتك الصحية.",
     },
     "fr": {
         "done": "Bravo ! Ça compte. Les petits pas s'additionnent.",
@@ -127,6 +165,11 @@ MESSAGES = {
         "level_down": "Nous allégerons un peu l'étape de demain. Pas de pression, vos progrès restent.",
         "welcome_back": "Bon retour ! Rien n'a été remis à zéro. Commençons par un tout petit pas.",
         "ask_barrier": "Qu'est-ce qui a gêné récemment ? Choisissez une raison pour adapter votre plan.",
+        "nudge_1": "Un tout petit pas vous attend quand vous voulez. Rien n'est perdu.",
+        "nudge_2": "Nous pensons à vous. Une minute suffit aujourd'hui, ou dites-nous ce qui a gêné.",
+        "nudge_paused": "Nous arrêtons les rappels. Votre plan et vos progrès sont conservés et vous attendront.",
+        "supporter_prompt": "Une personne que vous soutenez aimerait peut-être un mot gentil aujourd'hui.",
+        "safety_pause": "Nous gardons l'étape d'aujourd'hui à la même taille pendant que votre santé est vérifiée.",
     },
 }
 
@@ -160,26 +203,31 @@ def target_for(behavior: str, baseline: float, goal: float, level: int,
 def build_action(behavior: str, baseline: float, goal: float, level: int,
                  day: date, comeback: bool = False,
                  top_barrier: Optional[str] = None, option_index: Optional[int] = None,
-                 note: str = "") -> dict:
+                 note: str = "", lang: str = "en") -> dict:
     """Return title/detail/technique/rationale/target for one day's action.
     `option_index` lets the learning engine choose the style; `note` explains that choice to the user."""
     target = target_for(behavior, baseline, goal, level, comeback)
     options = BASE_ACTIONS[behavior]
     idx = option_index if option_index is not None and 0 <= option_index < len(options) else day.toordinal() % len(options)
     title_t, detail, technique = options[idx]
+    local = (l10n.ACTIONS.get(lang) or {}).get((behavior, idx))      # French or Arabic text when we have it; otherwise English
+    if local:
+        title_t, detail = local
     adaptation = None
     if comeback:
         technique = "Self-compassion after setbacks"
-        detail = "A very small step to get going again. " + detail
+        detail = l10n.COMEBACK_PREFIX.get(lang, l10n.COMEBACK_PREFIX["en"]) + detail
     elif top_barrier in BARRIER_TWEAK:
         adaptation, technique = BARRIER_TWEAK[top_barrier]
+        adaptation = l10n.pick(l10n.TWEAK, lang, top_barrier, adaptation)
         detail = f"{detail} {adaptation}"
-    why, limits = TECHNIQUES[technique]
+    why, limits = l10n.tech(lang, technique) or TECHNIQUES[technique]
+    limits_label = l10n.LIMITS_LABEL.get(lang, "Limits:")
     return {
         "title": title_t.format(t=target),
         "detail": detail,
         "technique": technique,
-        "rationale": f"{why} Limits: {limits}" + (f" {note}" if note else ""),
+        "rationale": f"{why} {limits_label} {limits}" + (f" {note}" if note else ""),
         "target_value": target,
         "adapted_for_barrier": top_barrier if adaptation else None,
     }
@@ -256,12 +304,16 @@ def infer_barrier(recent_barriers: List[str],
 
 
 def suggest_level(level: int, day_status: Dict[date, str], today: date,
-                  start: date, last_change: Optional[date]) -> Tuple[int, Optional[str]]:
-    """Return (new_level, reason) where reason is 'level_up'|'level_down'|None."""
+                  start: date, last_change: Optional[date], slow: bool = False,
+                  hold: bool = False) -> Tuple[int, Optional[str]]:
+    """Return (new_level, reason) where reason is 'level_up'|'level_down'|None.
+    `slow` (a person who is only thinking about change) needs a longer, steadier run before the step grows;
+    `hold` (a health safety reason) never lets it grow."""
     if last_change and (today - last_change).days < 3:
         return level, None  # don't flip-flop
-    rate, n = adherence(day_status, today, 7, start)
-    if n >= 5 and rate >= 0.85 and level < 5:
+    window = 10 if slow else 7
+    rate, n = adherence(day_status, today, window, start)
+    if n >= (8 if slow else 5) and rate >= (0.9 if slow else 0.85) and level < 5 and not hold:
         return level + 1, "level_up"
     if n >= 3 and rate < 0.35 and level > 1:
         return level - 1, "level_down"
@@ -318,7 +370,17 @@ def outcomes(day_status: Dict[date, str], values: Dict[date, float],
         delta = (avg - baseline) if direction == "up" else (baseline - avg)
         change_pct = round(100 * delta / baseline, 1)
     last_active = max((d for d, s in day_status.items() if s in ("done", "partial")), default=None)
+    # Sustained = kept going in most of the last eight weeks. It is only judged once there are eight weeks to judge.
+    sustained = (persisted >= 6) if len(weeks) >= 8 else None
+    longest_gap = 0
+    gap = 0
+    for d in all_days:
+        gap = 0 if _engaged(day_status.get(d)) else gap + 1
+        longest_gap = max(longest_gap, gap)
     return {
+        "sustained": sustained,
+        "recovery_rate": round(len(recoveries) / lapses, 2) if lapses else None,
+        "longest_gap_days": longest_gap,
         "weeks_tracked": len(weeks),
         "weeks_persisted": persisted,
         "lapses": lapses,
@@ -328,3 +390,96 @@ def outcomes(day_status: Dict[date, str], values: Dict[date, float],
         "retained_last_7_days": bool(last_active and (today - last_active).days <= 7),
         "weekly_adherence": weeks,
     }
+
+
+
+# ---------- circumstances, health context and chosen data ----------
+TIME_LABEL = {"morning": "morning", "midday": "midday", "evening": "evening"}
+SUPPORT_WORD = {"family": "a family member", "friend": "a friend", "workplace": "a colleague"}
+
+
+def adapt_for_context(built: dict, behavior: str, ctx: Optional[dict], lang: str = "en") -> dict:
+    """Fit one day's action to the person's life. Only wording and cues change; the size of the step is decided by the loop, never by this."""
+    if not ctx:
+        return built
+    X = lambda k: l10n.pick(l10n.CONTEXT, lang, k) or l10n.CONTEXT["en"][k]          # noqa: E731
+    b = dict(built)
+    detail = b["detail"]
+    extra: List[str] = []
+    if ctx.get("work_pattern") in ("shift", "irregular"):
+        extra.append(X("shift"))
+    elif ctx.get("preferred_time") in TIME_LABEL:
+        extra.append(X("time").format(x=X(ctx["preferred_time"])))
+    if behavior in ("movement", "activity") and ctx.get("mobility") in ("limited", "wheelchair"):
+        extra.append(X("chair") if behavior == "activity" else X("steps_hint"))
+    who = ctx.get("support") if ctx.get("support") in SUPPORT_WORD else None
+    if who and b.get("technique") in ("Social support", "Habit stacking", "Implementation intention"):
+        extra.append(X("ask").format(who=X(who)))
+    why = (ctx.get("motivation_text") or "").strip()
+    if why and (b.get("technique") == "Self-compassion after setbacks" or b.get("adapted_for_barrier") == "motivation"):
+        extra.append(X("reason").format(why=why[:120]))
+    if extra:
+        detail = f"{detail} {' '.join(extra)}"
+    if ctx.get("literacy") == "simple":
+        first = detail.split(". ")[0].rstrip(".") + "."
+        detail = first
+        b["rationale"] = b["rationale"].split(". ")[0].rstrip(".") + "."
+    b["detail"] = detail
+    return b
+
+
+def safety_note(behavior: str, health: Optional[dict], lang: str = "en") -> dict:
+    """Health guard rails. `hold_level` stops the step from growing; the note tells the person why in plain words.
+    This is guidance to speak to a clinician, never a diagnosis."""
+    health = health or {}
+    S = lambda k: l10n.pick(l10n.SAFETY, lang, k) or l10n.SAFETY["en"][k]          # noqa: E731
+    conditions = [str(c).lower() for c in (health.get("conditions") or [])]
+    if behavior in ("movement", "activity"):
+        if health.get("bp_crisis") or health.get("sos_active"):
+            return {"hold_level": True, "reason": "safety", "note": S("bp")}
+        if any(k in conditions for k in ("heart", "cardiac", "heart failure", "angina")):
+            return {"hold_level": False, "reason": "condition", "note": S("heart")}
+    if behavior == "nutrition" and any("diabet" in c for c in conditions):
+        return {"hold_level": False, "reason": "condition", "note": S("diabetes")}
+    if behavior == "smoking":
+        return {"hold_level": False, "reason": "support", "note": S("smoking")}
+    return {"hold_level": False, "reason": None, "note": None}
+
+
+def infer_barrier_from_data(self_reported: Optional[str], sleep_hours: Optional[float], bp_crisis: bool = False) -> Tuple[Optional[str], Optional[str]]:
+    """(barrier, source). What the person said always wins. Without it, the data they chose to share can suggest a likely barrier."""
+    if self_reported:
+        return self_reported, "self"
+    if bp_crisis:
+        return "pain_sick", "data"
+    if sleep_hours is not None and sleep_hours < 5.5:
+        return "tired", "data"
+    return None, None
+
+
+def recommend_behaviors(ctx: Optional[dict], profile: Optional[dict], sleep_hours: Optional[float], active: List[str]) -> List[dict]:
+    """Turn who the person is into a short, ordered list of what to try, each with the reason. Never more than three."""
+    ctx = ctx or {}
+    profile = profile or {}
+    conditions = [str(c).lower() for c in (profile.get("conditions") or [])]
+    habits = [str(h).lower() for h in (profile.get("habits") or [])]
+    out: List[dict] = []
+    limited = ctx.get("mobility") in ("limited", "wheelchair")
+    move = "activity" if limited else "movement"
+    if any(k in conditions for k in ("hypertension", "high blood pressure", "diabetes", "type 2 diabetes", "heart", "obesity")):
+        out.append({"behavior": move, "reason": "Regular movement helps blood pressure, blood sugar and the heart." + (" Minutes of any movement suit you, so steps are not required." if limited else "")})
+    if sleep_hours is not None and sleep_hours < 6:
+        out.append({"behavior": "sleep", "reason": f"You slept about {sleep_hours:g} hours last night, and short sleep makes every other change harder."})
+    if any("smok" in h for h in habits):
+        out.append({"behavior": "smoking", "reason": "You told us you smoke. Cutting down step by step is safer and more lasting than stopping all at once for most people."})
+    if any(k in conditions for k in ("diabetes", "type 2 diabetes", "hypertension", "obesity")):
+        out.append({"behavior": "nutrition", "reason": "More vegetables and fruit in meals you already eat supports blood pressure and weight."})
+    if not out:
+        out.append({"behavior": move, "reason": "Moving a little more each day is the most useful place to start for most people."})
+    seen, final = set(), []
+    for o in out:
+        if o["behavior"] in active or o["behavior"] in seen:
+            continue
+        seen.add(o["behavior"])
+        final.append(o)
+    return final[:3]
