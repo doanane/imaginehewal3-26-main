@@ -18,6 +18,7 @@ from app.schemas.message import (
 router = APIRouter(prefix="/messages", tags=["messages"])
 
 from app.realtime import hub
+from app.services import push
 
 
 class _HubCompat:
@@ -98,6 +99,10 @@ async def send_message(
         }
     }, message_data.receiver_id)
     
+    sender_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or "Someone"
+    push.notify_users([message_data.receiver_id], "New message", f"{sender_name} sent you a message.",
+                      {"type": "message", "from": current_user.id})
+
     # Prepare response
     response = MessageResponse(
         id=db_message.id,
