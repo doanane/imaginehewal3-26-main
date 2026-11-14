@@ -1,0 +1,58 @@
+{
+ "steps": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658440/hewal3/explore/steps.jpg",
+  "credit": "Emma Simpson on Unsplash"
+ },
+ "active": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658442/hewal3/explore/active.jpg",
+  "credit": "Jakub Zerdzicki on Unsplash"
+ },
+ "sleep": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658444/hewal3/explore/sleep.jpg",
+  "credit": "Bobby Thapa on Unsplash"
+ },
+ "meals": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658446/hewal3/explore/meals.jpg",
+  "credit": "Inna Safa on Unsplash"
+ },
+ "meds": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658448/hewal3/explore/meds.jpg",
+  "credit": "Miles Burke on Unsplash"
+ },
+ "mind": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658450/hewal3/explore/mind.jpg",
+  "credit": "Jared Rice on Unsplash"
+ },
+ "learn": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658452/hewal3/explore/learn.jpg",
+  "credit": "Kelly Sikkema on Unsplash"
+ },
+ "g_walking": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658454/hewal3/explore/g_walking.jpg",
+  "credit": "Tong Su on Unsplash"
+ },
+ "g_heart": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658456/hewal3/explore/g_heart.jpg",
+  "credit": "Mockup Graphics on Unsplash"
+ },
+ "g_diabetes": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658457/hewal3/explore/g_diabetes.jpg",
+  "credit": "Ravi Sharma on Unsplash"
+ },
+ "g_eating": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658459/hewal3/explore/g_eating.jpg",
+  "credit": "Ingeborg Korme on Unsplash"
+ },
+ "g_sleep": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658461/hewal3/explore/g_sleep.jpg",
+  "credit": "Nicole Bomar on Unsplash"
+ },
+ "g_peer": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658464/hewal3/explore/g_peer.jpg",
+  "credit": "Vitaly Gariev on Unsplash"
+ },
+ "g_carers": {
+  "url": "https://res.cloudinary.com/dcrp2c9dj/image/upload/v1794658466/hewal3/explore/g_carers.jpg",
+  "credit": "Age Cymru on Unsplash"
+ }
+}
