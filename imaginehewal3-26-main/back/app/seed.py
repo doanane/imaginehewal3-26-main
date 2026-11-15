@@ -8,7 +8,10 @@ logger = logging.getLogger(__name__)
 DEMO_DOCTOR_ID = "DOC00001"
 
 def seed_db():
-    """Seed the database with default users (patient and caregiver)"""
+    """Seed the database with default users (patient and caregiver). Development only: these accounts share a published password."""
+    from app.config import settings
+    if settings.ENVIRONMENT != "development":
+        return
     db = SessionLocal()
     try:
         # Seed patient user

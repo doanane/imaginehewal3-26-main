@@ -57,13 +57,15 @@ from app.routers.accessibility import router as accessibility_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+_DOCS_ON = settings.ENVIRONMENT == "development" or os.getenv("ENABLE_DOCS") == "1"   # ENABLE_DOCS=1 shows /docs on a production server without switching to development mode
+
 app = FastAPI(
     title="HEWAL3 Health API",
     description="AI-powered health management system with emergency response",
     version="3.0.0",
-    docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
-    redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
-    openapi_url="/openapi.json" if settings.ENVIRONMENT == "development" else None,
+    docs_url="/docs" if _DOCS_ON else None,
+    redoc_url="/redoc" if _DOCS_ON else None,
+    openapi_url="/openapi.json" if _DOCS_ON else None,
 )
 
 allowed_origins = [
