@@ -59,7 +59,11 @@ def ingest(body: VitalIn, db: Session = Depends(get_db),
     is_fresh = (now - taken_at) <= timedelta(minutes=10)
     device = db.query(IoTDevice).filter_by(device_id=body.device_id).first()
     if device and device.user_id != user.id:
-        raise HTTPException(403, "This device is registered to another account")
+        # "apple-health" is the Health app on a phone, not one person's hardware: when someone else signs in on the same phone it belongs to them now.
+        if body.device_id == "apple-health":
+            device.user_id = user.id
+        else:
+            raise HTTPException(403, "This device is registered to another account")
     if not device:
         device = IoTDevice(user_id=user.id, device_id=body.device_id, device_type="smartwatch",
                            device_name=body.device_name or "Smartwatch", manufacturer="oraimo",

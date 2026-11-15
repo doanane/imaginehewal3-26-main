@@ -20,19 +20,21 @@ async function call<T>(path: string, opts: { method?: string; body?: unknown } =
   if (s) headers.Authorization = `Bearer ${s.token}`;
   let r: Response;
   try {
-    r = await fetch(path.startsWith('/rtc') ? path : `/doctor-portal${path}`, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    r = await fetch(path.startsWith('/rtc') || path.startsWith('/auth/') ? path : `/doctor-portal${path}`, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
   } catch {
     throw new Error('Cannot reach the server. Check the connection.');
   }
   // a 401 on the login form only means wrong details; with a session it means the session ended
   if (r.status === 401 && s) { onExpired(); throw new Error('Your session ended. Please sign in again.'); }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(typeof j.detail === 'string' ? j.detail : `Something went wrong (${r.status}).`);
+  if (!r.ok) throw new Error(typeof j.detail === 'string' ? j.detail : Array.isArray(j.detail) && j.detail[0]?.msg ? `Please check the entry: ${String(j.detail[0].msg).toLowerCase()}.` : `Something went wrong (${r.status}).`);
   return j as T;
 }
 
 export const login = (doctor_id: string, password: string) =>
   call<{ access_token: string; doctor: DoctorInfo }>('/login', { method: 'POST', body: { doctor_id, password } });
+/** Reviewer sandbox: signs in as the demo doctor, no account needed. */
+export const guestLogin = () => call<{ access_token: string; doctor: DoctorInfo }>('/auth/guest', { method: 'POST', body: { role: 'doctor' } });
 export const getOverview = () => call<Overview>('/overview');
 export const getPatient = (id: number) => call<Detail>(`/patients/${id}`);
 export const getAnalytics = (id: number, days: number) => call<Analytics>(`/patients/${id}/analytics?days=${days}`);

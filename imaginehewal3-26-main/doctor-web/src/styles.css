@@ -445,3 +445,26 @@ textarea:focus { border-color: var(--c-brand); box-shadow: 0 0 0 3px color-mix(i
 .brand-logo img { position: absolute; width: 147.06%; max-width: none; left: -23.53%; top: -114.29%; user-select: none; }
 .side .brand-row { padding: 0 4px; } .verify-card .brand-row, .hero-copy .brand-row { padding: 0; }
 .lh-brand .brand-logo { box-shadow: none; border-radius: 0; }
+
+/* one line, never overflowing */
+.one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.card-head h2, .card h2, .card h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.field input { text-overflow: ellipsis; }
+.vit span, .vit small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vit-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+
+.demo-bar { background: #1f2937; color: #fff; font-size: 13px; font-weight: 600; text-align: center; padding: 7px 12px; border-radius: 10px; margin-bottom: 12px; }
+
+/* consultation: the signing bar is solid so text never shows through it; vitals tiles are even and roomy */
+.sign-bar { background: var(--c-card); backdrop-filter: none; }
+.consult-main { padding-bottom: 8px; }
+.vit { min-height: 92px; justify-content: space-between; }
+.vit small { color: var(--c-mute); font-size: 12px; }
+.grid-main > .card, .consult-side > .card { align-self: start; }
+
+/* tablets and narrow windows: the page must never be wider than the screen */
+.shell { grid-template-columns: 252px minmax(0, 1fr); }
+@media (max-width: 1000px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .side nav { min-width: 0; scrollbar-width: none; } .side nav .nav { white-space: nowrap; flex: none; }
+}

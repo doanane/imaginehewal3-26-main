@@ -108,11 +108,11 @@ export default function ConsultPage({ id }: { id: number }) {
         <div className="consult-main">
           <section className="card">
             <div className="card-head"><h2><ClipboardList size={18} />Reason for the visit</h2></div>
-            <div className="field"><input aria-label="Reason for the visit" value={c.complaint || ''} maxLength={300} disabled={locked} onChange={e => edit({ complaint: e.target.value })} placeholder="In the patient's words, for example: headaches for two weeks" /></div>
+            <div className="field"><input aria-label="Reason for the visit" value={c.complaint || ''} maxLength={300} disabled={locked} onChange={e => edit({ complaint: e.target.value })} placeholder="In the patient's words" /></div>
           </section>
 
           <section className="card">
-            <div className="card-head"><h2><Activity size={18} />Vitals taken today</h2><small>In the room. Kept in this note, not mixed into the patient's own readings.</small></div>
+            <div className="card-head"><h2><Activity size={18} />Vitals taken today</h2><small className="one-line">Taken in the room, kept in this note only</small></div>
             <div className="vit-grid">
               {VITALS.map(x => {
                 const val = c.clinic_vitals[x.k];
@@ -197,7 +197,7 @@ export default function ConsultPage({ id }: { id: number }) {
             <div className="card-head"><h2><Pill size={18} />Taking their medicines?</h2></div>
             {!a ? <Skeleton h={50} /> : !a.medication ? <p className="muted">No medicines on their list.</p> : a.medication.adherence_pct === null
               ? <p className="muted">Not enough doses have been due yet to judge ({a.medication.due} so far). This is new data, not zero.</p>
-              : <><b className="big">{a.medication.adherence_pct}%</b><p className="muted small">{a.medication.taken} of {a.medication.due} due doses logged as taken in 14 days{a.medication.unlogged ? `, ${a.medication.unlogged} not logged` : ''}.</p></>}
+              : <><b className="big">{a.medication.adherence_pct}%</b><p className="muted small one-line">{a.medication.taken} of {a.medication.due} doses taken, 14 days{a.medication.unlogged ? `, ${a.medication.unlogged} not logged` : ''}</p></>}
           </section>
           <section className="card">
             <div className="card-head"><h2>What stands out</h2><small>14 days</small></div>

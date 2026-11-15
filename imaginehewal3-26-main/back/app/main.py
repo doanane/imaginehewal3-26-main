@@ -48,6 +48,7 @@ from app.routers.community import router as community_router
 from app.routers.explore import router as explore_router
 from app.routers.auth_pages import router as auth_pages_router
 from app.routers.clinic import router as clinic_router, public_router as clinic_public_router
+from app.routers.guest import router as guest_router
 from app.routers.doctor_portal import router as doctor_portal_router, patient_router as my_doctor_router
 from app.routers.ai import router as ai_router
 from app.routers.huawei import router as huawei_router, huawei_worker
@@ -183,6 +184,7 @@ app.include_router(community_router)
 app.include_router(explore_router)
 app.include_router(auth_pages_router)
 app.include_router(clinic_router)
+app.include_router(guest_router)
 app.include_router(clinic_public_router)
 app.include_router(doctor_portal_router)
 app.include_router(ai_router)
@@ -206,6 +208,12 @@ def read_root():
         "docs": "/docs",
         "status": "online",
     }
+
+@app.get("/ping")
+def ping():
+    """For uptime pingers and the host's health check: answers at once and never touches the database, so it keeps a free server awake without keeping a free database awake."""
+    return {"ok": True}
+
 
 @app.get("/health")
 async def health_check():
@@ -294,3 +302,19 @@ async def welcome_page():
         </body>
     </html>
     """
+
+@app.middleware("http")
+async def guest_guard(request, call_next):
+    """A guest (reviewer sandbox) may look around and try the app, but never reach a real person, phone or account."""
+    auth = request.headers.get("authorization", "")
+    if request.method not in ("GET", "HEAD", "OPTIONS") and auth.lower().startswith("bearer "):
+        from app.services import guest_sandbox as _sb
+        if _sb.blocked(request.method, request.url.path):
+            try:
+                from jose import jwt as _jwt
+                if _jwt.get_unverified_claims(auth[7:]).get("guest"):
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse({"detail": "This is a demo. That action is turned off for guests."}, status_code=403)
+            except Exception:
+                pass
+    return await call_next(request)

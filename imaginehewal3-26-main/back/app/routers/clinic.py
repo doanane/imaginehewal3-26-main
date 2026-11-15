@@ -188,13 +188,13 @@ def check_prescription(patient_id: int, body: CheckIn, db: Session = Depends(get
 
 # ------------------------------------------------------------------ consultations
 class VitalsIn(BaseModel):
-    systolic: Optional[int] = Field(None, ge=50, le=300)
-    diastolic: Optional[int] = Field(None, ge=30, le=200)
-    heart_rate: Optional[int] = Field(None, ge=20, le=250)
-    spo2: Optional[float] = Field(None, ge=50, le=100)
-    temperature: Optional[float] = Field(None, ge=30, le=45)
-    weight: Optional[float] = Field(None, ge=2, le=400)
-    glucose: Optional[float] = Field(None, ge=10, le=1000)
+    systolic: Optional[int] = Field(None, ge=0, le=400)
+    diastolic: Optional[int] = Field(None, ge=0, le=300)
+    heart_rate: Optional[int] = Field(None, ge=0, le=300)
+    spo2: Optional[float] = Field(None, ge=0, le=100)
+    temperature: Optional[float] = Field(None, ge=0, le=50)
+    weight: Optional[float] = Field(None, ge=0, le=600)
+    glucose: Optional[float] = Field(None, ge=0, le=1500)
 
 
 class DxIn(BaseModel):

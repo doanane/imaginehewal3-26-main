@@ -147,6 +147,7 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
         </div>
       </aside>
       <main className="main" id="content">
+        {d.doctor_id === 'DOCGUEST' && <div className="demo-bar" role="alert">Demo mode. Sample data, not real patients.</div>}
         <TopBar doctor={d} signOut={signOut} notes={notes} />
         <CommandPalette overview={data} />
         <AnimatePresence mode="wait">

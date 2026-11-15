@@ -22,7 +22,7 @@ export default function TodayPage({ overview, error }: { overview: Overview | nu
   const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const t = today.data;
   const s = overview?.stats;
-  const surname = (overview?.doctor.full_name || '').replace(/^Dr\.?\s*/i, '').split(/\s+/).pop() || '';
+  const surname = (overview?.doctor.full_name || '').replace(/\s*\(.*?\)/g, '').replace(/^Dr\.?\s*/i, '').trim().split(/\s+/).pop() || '';
   const dateText = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
 
   if (!overview) return error ? <div className="alert-box" role="alert">{error}</div> : <div className="grid-kpi">{[0, 1, 2, 3].map(i => <div key={i} className="card"><Skeleton h={14} w="50%" /><div style={{ height: 14 }} /><Skeleton h={34} w="40%" /></div>)}</div>;

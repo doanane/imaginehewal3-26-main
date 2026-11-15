@@ -121,6 +121,16 @@ def generate_token(length=32):
     """Generate random token"""
     return secrets.token_urlsafe(length)
 
+def _photo(db: Session, user) -> Optional[str]:
+    """The saved profile photo lives on the profile row, not on the user row; without this lookup every sign in came back with no photo."""
+    from app.models.user import UserProfile
+    try:
+        p = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+        return getattr(p, "profile_image_url", None) if p else None
+    except Exception:
+        return None
+
+
 def create_refresh_token(user_id: int, db: Session):
     """Create refresh token"""
     token = generate_token()
@@ -440,7 +450,7 @@ def login_patient(
         username=user.username,
         is_email_verified=user.is_email_verified,
         is_caregiver=user.is_caregiver,
-        profile_image=getattr(user, "profile_image_url", None)
+        profile_image=_photo(db, user)
     )
 
 @router.post("/signup/caregiver", response_model=CaregiverSignupResponse)
@@ -662,7 +672,7 @@ def verify_otp_login(request_data: VerifyOTPLogin, request: Request, db: Session
         access_token=access_token, refresh_token=refresh_token, token_type="bearer",
         user_type="caregiver" if user.is_caregiver else "patient", user_id=user.id,
         caregiver_id=user.caregiver_id if user.is_caregiver else None, email=user.email, username=user.username,
-        is_email_verified=user.is_email_verified, is_caregiver=user.is_caregiver, profile_image=getattr(user, "profile_image_url", None),
+        is_email_verified=user.is_email_verified, is_caregiver=user.is_caregiver, profile_image=_photo(db, user),
     )
 
 

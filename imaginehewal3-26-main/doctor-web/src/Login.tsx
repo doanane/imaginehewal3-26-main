@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useState } from 'react';
 import { ThemeToggle } from './theme';
 import { motion } from 'framer-motion';
 import { Activity, AlertCircle, Eye, EyeOff, Lock, ShieldCheck, Stethoscope, UserRound } from 'lucide-react';
-import { login, saveSession, Session } from './api';
+import { guestLogin, login, saveSession, Session } from './api';
 import Logo from './Logo';
 
 const Scene3D = lazy(() => import('./Scene3D'));
@@ -19,6 +19,12 @@ export default function Login({ notice, onSignedIn }: { notice: string; onSigned
   const [show, setShow] = useState(false);
   const [err, setErr] = useState(notice);
   const [busy, setBusy] = useState(false);
+
+  const guest = async () => {
+    setBusy(true); setErr('');
+    try { const r = await guestLogin(); const s = { token: r.access_token, doctor: r.doctor }; saveSession(s); onSignedIn(s); }
+    catch (x) { setErr((x as Error).message); setBusy(false); }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +72,8 @@ export default function Login({ notice, onSignedIn }: { notice: string; onSigned
             </div>
             <motion.button className="btn primary wide" type="submit" disabled={busy} whileTap={{ scale: 0.98 }}>{busy ? 'Signing in' : 'Sign in'}</motion.button>
           </form>
-          <p className="fine">Patient information on this site is confidential.</p>
+          <button type="button" className="btn ghost wide" onClick={guest} disabled={busy}><Eye size={16} />Continue as Reviewer / Guest</button>
+          <p className="fine">The demo uses sample data only. Patient information on this site is confidential.</p>
         </motion.div>
       </section>
     </div>
