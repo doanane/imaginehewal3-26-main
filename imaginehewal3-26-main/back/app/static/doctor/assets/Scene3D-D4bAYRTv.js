@@ -1,4 +1,4 @@
-import{r as ra,j as $o}from"./index-BqjkBmla.js";/**
+import{r as ra,j as $o}from"./index-B04TA3k-.js";/**
  * @license
  * Copyright 2010-2024 Three.js Authors
  * SPDX-License-Identifier: MIT

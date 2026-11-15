@@ -44,7 +44,6 @@ def test_health_safety_holds_the_step_and_explains():
     assert eng.safety_note("activity", {"sos_active": True})["hold_level"]
     assert not eng.safety_note("sleep", {"bp_crisis": True})["hold_level"]                  # sleep is not made harder or easier by it
     assert "diabetes" in eng.safety_note("nutrition", {"conditions": ["Type 2 diabetes"]})["note"]
-    assert "Ask your clinician" in eng.safety_note("smoking", {})["note"]
     start, great = T - timedelta(days=10), days(*[(i, "done") for i in range(1, 8)])
     assert eng.suggest_level(2, great, T, start, None) == (3, "level_up")
     assert eng.suggest_level(2, great, T, start, None, hold=True) == (2, None)             # never grows while health is checked
@@ -66,9 +65,9 @@ def test_the_persons_own_words_beat_inference():
 
 
 def test_recommendations_turn_the_person_into_a_short_reasoned_list():
-    recs = eng.recommend_behaviors({"mobility": "wheelchair"}, {"conditions": ["Hypertension"], "habits": ["Smoking"]}, 5.0, [])
+    recs = eng.recommend_behaviors({"mobility": "wheelchair"}, {"conditions": ["Hypertension"], "habits": []}, 5.0, [])
     names = [r["behavior"] for r in recs]
-    assert names[0] == "activity" and "sleep" in names and "smoking" in names and len(recs) <= 3 and all(r["reason"] for r in recs)
+    assert names[0] == "activity" and "sleep" in names and len(recs) <= 3 and all(r["reason"] for r in recs)
     assert "movement" not in names
     assert eng.recommend_behaviors({}, {}, None, ["movement"]) == []                       # nothing new to suggest when it is already active
     assert [r["behavior"] for r in eng.recommend_behaviors({}, {}, None, [])] == ["movement"]

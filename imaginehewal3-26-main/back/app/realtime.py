@@ -46,6 +46,30 @@ class Hub:
                 self.unregister(user_id, ws)
         return delivered
 
+    async def send_except(self, user_id: int, skip: WebSocket, event: dict) -> int:
+        """Send to every open connection of a user except one (the device that just answered)."""
+        delivered = 0
+        for ws in list(self._conns.get(user_id, ())):
+            if ws is skip:
+                continue
+            try:
+                await ws.send_json(event)
+                delivered += 1
+            except Exception:
+                self.unregister(user_id, ws)
+        return delivered
+
+    async def send_ws(self, user_id: int, ws: WebSocket, event: dict) -> bool:
+        """Send to one specific connection of a user, if it is still open."""
+        if ws not in self._conns.get(user_id, ()):
+            return False
+        try:
+            await ws.send_json(event)
+            return True
+        except Exception:
+            self.unregister(user_id, ws)
+            return False
+
     async def send_many(self, user_ids: Iterable[int], event: dict) -> None:
         for uid in set(user_ids):
             await self.send(uid, event)

@@ -321,3 +321,23 @@ def test_deleting_an_author_removes_other_peoples_comments_on_their_posts(env):
     delete_account(db, db.query(User).filter(User.id == uid).first())
     assert db.query(CommunityPost).filter_by(user_id=uid).count() == 0 and db.query(PostComment).filter_by(post_id=pid).count() == 0
     db.close()
+
+
+def test_workout_detail_fills_what_it_honestly_can(env):
+    """A walk with no GPS: the detail gets a labelled steps estimate, a cadence, and heart rate from real readings taken during the walk."""
+    from app.models.iot_device import VitalReading
+    c, h, uid = env["client"], env["h"]["a"], env["ids"]["a"]
+    start = datetime.now(timezone.utc) - timedelta(minutes=20)
+    w = c.post("/activity/workouts", json={"kind": "walk", "started_at": start.isoformat(), "duration_s": 600, "steps": 800}, headers=h).json()
+    d = c.get(f"/activity/workouts/{w['id']}", headers=h).json()
+    assert d["distance_m"] == 0 and d["estimate"]["distance_m"] == round(800 * 0.415 * 1.70) and d["cadence_spm"] == 80   # height 170 cm from the profile
+    assert d["avg_hr"] is None and d["hr_source"] is None                                  # nothing recorded: nothing invented
+    db = _db()
+    db.add_all([VitalReading(user_id=uid, heart_rate=hr, timestamp=start + timedelta(minutes=m)) for hr, m in ((100, 2), (110, 5), (120, 8))])
+    db.add(VitalReading(user_id=uid, heart_rate=60, timestamp=start - timedelta(hours=3)))   # outside the walk: ignored
+    db.commit(); db.close()
+    d = c.get(f"/activity/workouts/{w['id']}", headers=h).json()
+    assert d["avg_hr"] == 110 and d["max_hr"] == 120 and d["hr_source"] == "vitals"
+    with_gps = c.post("/activity/workouts", json={"kind": "run", "started_at": _recent_start(), "duration_s": 330, "steps": 900, "route": _route(4.0, 330)}, headers=h).json()
+    assert c.get(f"/activity/workouts/{with_gps['id']}", headers=h).json()["estimate"] is None   # real GPS distance: no estimate
+    c.delete(f"/activity/workouts/{w['id']}", headers=h); c.delete(f"/activity/workouts/{with_gps['id']}", headers=h)

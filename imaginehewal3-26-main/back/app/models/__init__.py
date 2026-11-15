@@ -40,6 +40,7 @@ from .activity import (HealthGoals, Workout, WeightLog, SleepSession, Participan
                        CommunityPost, PostComment, PostLike, PostReport)
 from .community_review import CommunityReview
 from .explore import ArticleRead, ArticleSave, ChallengeEntry, GroupMember
+from .clinic import ClinicDocument, Consultation
 
 __all__ = [
     "BehaviorPlan",

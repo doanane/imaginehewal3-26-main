@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, LogOut, UserCog } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Search, UserCog } from 'lucide-react';
 import type { DoctorInfo } from './types';
 import { ThemeToggle } from './theme';
 import { initials } from './util';
 
 /** Top right corner: who is signed in, with a menu for the profile, the colour theme and signing out. */
-export default function TopBar({ doctor, signOut }: { doctor: DoctorInfo; signOut: () => void }) {
+export default function TopBar({ doctor, signOut, notes = [] }: { doctor: DoctorInfo; signOut: () => void; notes?: { text: string; href: string }[] }) {
+  const [bell, setBell] = useState(false);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -22,6 +23,11 @@ export default function TopBar({ doctor, signOut }: { doctor: DoctorInfo; signOu
   const sub = [doctor.specialization, doctor.hospital].filter(Boolean).join(', ');
   return (
     <div className="topbar">
+      <button type="button" className="search-btn" onClick={() => window.dispatchEvent(new Event('open-palette'))} aria-label="Search patients and pages"><Search size={16} /><span>Search</span><kbd>Ctrl K</kbd></button>
+      <div className="bell-wrap">
+        <button type="button" className="icon-btn bell" aria-label={`Notifications, ${notes.length}`} aria-expanded={bell} onClick={() => setBell(b => !b)}><Bell size={18} />{notes.length > 0 && <em className="count">{notes.length}</em>}</button>
+        {bell && <div className="menu notes-menu" role="menu">{notes.length === 0 ? <p className="muted" style={{ padding: 14 }}>Nothing needs you right now.</p> : notes.map((n, i) => <a key={i} role="menuitem" className="menu-item" href={n.href} onClick={() => setBell(false)}>{n.text}</a>)}</div>}
+      </div>
       <ThemeToggle />
       <div className="profile-menu" ref={box}>
         <button className="profile-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}>

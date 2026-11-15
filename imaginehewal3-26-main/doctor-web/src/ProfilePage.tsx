@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BadgeCheck, Building2, KeyRound, Mail, Save, Stethoscope, Users } from 'lucide-react';
-import { changePassword, getMe, Profile, updateMe } from './api';
+import { BadgeCheck, Building2, CalendarClock, KeyRound, Mail, Save, Stethoscope, Users } from 'lucide-react';
+import { changePassword, getAvailability, getMe, Hours, Profile, setAvailability, updateMe } from './api';
 import { Skeleton } from './ui';
 import { initials } from './util';
 
@@ -70,6 +70,7 @@ export default function ProfilePage({ onSaved }: { onSaved: (p: Profile) => void
           </form>
         </section>
 
+        <HoursCard />
         <section className="card">
           <div className="card-head"><h2><KeyRound size={18} />Password</h2></div>
           <form onSubmit={savePw}>
@@ -85,5 +86,36 @@ export default function ProfilePage({ onSaved }: { onSaved: (p: Profile) => void
         </section>
       </div>
     </>
+  );
+}
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+function HoursCard() {
+  const [h, setH] = useState<Hours | null>(null);
+  const [note, setNote] = useState<Note>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { getAvailability().then(setH).catch(e => setNote({ ok: false, text: (e as Error).message })); }, []);
+  if (!h) return <section className="card"><Skeleton h={160} /></section>;
+  const toggle = (d: number) => setH({ ...h, days: h.days.includes(d) ? h.days.filter(x => x !== d) : [...h.days, d].sort() });
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setNote(null);
+    try { setH(await setAvailability(h)); setNote({ ok: true, text: 'Saved. Your schedule shades everything outside these hours.' }); }
+    catch (x) { setNote({ ok: false, text: (x as Error).message }); } finally { setBusy(false); }
+  };
+  return (
+    <section className="card">
+      <div className="card-head"><h2><CalendarClock size={18} />Working hours</h2></div>
+      <form onSubmit={save}>
+        <div className="chips" role="group" aria-label="Working days">{DAYS.map((n, i) => <button key={n} type="button" className="chip-btn" aria-pressed={h.days.includes(i)} onClick={() => toggle(i)}>{n}</button>)}</div>
+        <div className="two">
+          <div><label htmlFor="hs">From</label><div className="field"><input id="hs" type="time" value={h.start} onChange={e => setH({ ...h, start: e.target.value })} required /></div></div>
+          <div><label htmlFor="he">To</label><div className="field"><input id="he" type="time" value={h.end} onChange={e => setH({ ...h, end: e.target.value })} required /></div></div>
+        </div>
+        <label htmlFor="hl">Appointment length</label>
+        <div className="field"><select id="hl" value={h.slot_min} onChange={e => setH({ ...h, slot_min: Number(e.target.value) })}>{[15, 20, 30, 45, 60].map(n => <option key={n} value={n}>{n} minutes</option>)}</select></div>
+        <div className="row-end"><small>Used for the schedule grid.</small><button className="btn primary" disabled={busy || h.days.length === 0}>{busy ? 'Saving' : 'Save hours'}</button></div>
+        {note && <div className={`alert-box ${note.ok ? 'ok' : ''}`} role="status">{note.text}</div>}
+      </form>
+    </section>
   );
 }

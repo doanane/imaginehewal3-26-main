@@ -146,6 +146,7 @@ def create_tables(preserve_data: bool = True):
                 Base.metadata.drop_all(bind=engine)
             Base.metadata.create_all(bind=engine)
         _ensure_columns()
+        _drop_retired_habits()
 
     except Exception as e:
         logger.error(f"Error creating tables: {e}")
@@ -155,7 +156,7 @@ def create_tables(preserve_data: bool = True):
 def _ensure_columns():
     """create_all never alters existing tables, so add columns introduced after a database was first created."""
     from sqlalchemy import inspect, text
-    wanted = {"doctors": [("hashed_password", "VARCHAR")],
+    wanted = {"doctors": [("hashed_password", "VARCHAR"), ("working_hours", "JSON")],
               "community_posts": [("group_key", "VARCHAR"), ("image_urls", "JSON")],
               "community_reviews": [("updated_at", "TIMESTAMP")],
               "health_data": [("active_minutes", "INTEGER"), ("distance_m", "INTEGER"), ("steps_source", "VARCHAR")],
@@ -171,3 +172,17 @@ def _ensure_columns():
                 with engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
                 logger.info("Added column %s.%s", table, name)
+
+
+def _drop_retired_habits():
+    """The "smoke less" habit was removed from the app. Remove any such plan (and what hangs off it) so no screen or report meets a habit it no longer knows."""
+    from sqlalchemy import text
+    try:
+        with engine.begin() as conn:
+            ids = [r[0] for r in conn.execute(text("SELECT id FROM behavior_plans WHERE behavior = 'smoking'")).fetchall()]
+            for pid in ids:
+                for table in ("behavior_actions", "behavior_nudges", "behavior_shares"):
+                    conn.execute(text(f"DELETE FROM {table} WHERE plan_id = :p"), {"p": pid})
+                conn.execute(text("DELETE FROM behavior_plans WHERE id = :p"), {"p": pid})
+    except Exception as e:                                  # a fresh database has no such table yet, or it is already clean
+        logger.info("retired habit clean-up skipped: %s", type(e).__name__)

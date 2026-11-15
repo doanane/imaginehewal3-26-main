@@ -23,8 +23,6 @@ BEHAVIORS: Dict[str, dict] = {
                   "default_baseline": 1, "default_goal": 5},
     "sleep": {"unit": "hours of sleep", "direction": "up", "step": 0.5,
               "default_baseline": 5.5, "default_goal": 7.5},
-    "smoking": {"unit": "cigarettes per day", "direction": "down", "step": 1,
-                "default_baseline": 10, "default_goal": 0},
     # Minutes of any movement, so people who cannot or prefer not to count steps (wheelchair, limited mobility, seated work) are not left out.
     "activity": {"unit": "active minutes", "direction": "up", "step": 5,
                  "default_baseline": 10, "default_goal": 30},
@@ -119,12 +117,6 @@ BASE_ACTIONS = {
          "Decide when: for example after each meal. Five minutes three times adds up.", "Implementation intention"),
         ("Do something you enjoy that moves you for {t} minutes",
          "Music, a seated workout, a walk with someone, or helping at home. Pick what you like.", "Social support"),
-    ],
-    "smoking": [
-        ("Keep to {t} cigarette(s) or fewer today",
-         "Delay the first one by 30 minutes and note when cravings come.", "Self-monitoring"),
-        ("No more than {t} cigarette(s) today",
-         "Swap one cigarette for water, a short walk or chewing gum.", "Substitution"),
     ],
 }
 
@@ -441,8 +433,6 @@ def safety_note(behavior: str, health: Optional[dict], lang: str = "en") -> dict
             return {"hold_level": False, "reason": "condition", "note": S("heart")}
     if behavior == "nutrition" and any("diabet" in c for c in conditions):
         return {"hold_level": False, "reason": "condition", "note": S("diabetes")}
-    if behavior == "smoking":
-        return {"hold_level": False, "reason": "support", "note": S("smoking")}
     return {"hold_level": False, "reason": None, "note": None}
 
 
@@ -470,8 +460,6 @@ def recommend_behaviors(ctx: Optional[dict], profile: Optional[dict], sleep_hour
         out.append({"behavior": move, "reason": "Regular movement helps blood pressure, blood sugar and the heart." + (" Minutes of any movement suit you, so steps are not required." if limited else "")})
     if sleep_hours is not None and sleep_hours < 6:
         out.append({"behavior": "sleep", "reason": f"You slept about {sleep_hours:g} hours last night, and short sleep makes every other change harder."})
-    if any("smok" in h for h in habits):
-        out.append({"behavior": "smoking", "reason": "You told us you smoke. Cutting down step by step is safer and more lasting than stopping all at once for most people."})
     if any(k in conditions for k in ("diabetes", "type 2 diabetes", "hypertension", "obesity")):
         out.append({"behavior": "nutrition", "reason": "More vegetables and fruit in meals you already eat supports blood pressure and weight."})
     if not out:

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Activity, AlertCircle, AlertTriangle, ArrowLeft, ClipboardList, HeartHandshake, Footprints, Info, MapPin, OctagonAlert, Pill, ScrollText, Send, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { Activity, AlertCircle, AlertTriangle, ArrowLeft, ClipboardList, HeartHandshake, Footprints, Info, MapPin, OctagonAlert, Pill, ScrollText, Send, Sparkles, Stethoscope, UtensilsCrossed } from 'lucide-react';
 import { getAnalytics, getBrief, getPatient } from './api';
 import ChatPanel from './Chat';
+import ConsultButton from './ConsultButton';
+import { ClinicDoc, Consultation, getPatientConsultations, getPatientDocuments } from './api';
 import CarePlan from './CarePlan';
 import HabitsTab from './HabitsTab';
 import { AdherenceGrid, Bars, Gauge, TrendChart } from './Charts';
@@ -10,10 +12,10 @@ import type { Analytics, Brief, Detail, Finding, MetricBlock, Overview } from '.
 import { Badge, CountUp, Empty, Segmented, Skeleton, Tilt } from './ui';
 import { ago, bpText, initials, NA, safeMap, shortDay, show, signed, SOS_LABEL, usePolling, when } from './util';
 
-type Tab = 'summary' | 'trends' | 'medication' | 'careplan' | 'habits' | 'records';
+type Tab = 'summary' | 'trends' | 'medication' | 'careplan' | 'visits' | 'habits' | 'records';
 const TABS: { v: Tab; label: string; icon: React.ElementType }[] = [
   { v: 'summary', label: 'Summary', icon: Activity }, { v: 'trends', label: 'Trends', icon: ScrollText },
-  { v: 'medication', label: 'Medication', icon: Pill }, { v: 'careplan', label: 'Care plan', icon: ClipboardList }, { v: 'habits', label: 'Habits', icon: HeartHandshake }, { v: 'records', label: 'Records', icon: UtensilsCrossed },
+  { v: 'medication', label: 'Medication', icon: Pill }, { v: 'careplan', label: 'Care plan', icon: ClipboardList }, { v: 'visits', label: 'Visits', icon: Stethoscope }, { v: 'habits', label: 'Habits', icon: HeartHandshake }, { v: 'records', label: 'Records', icon: UtensilsCrossed },
 ];
 const LEVEL: Record<Finding['level'], { icon: React.ElementType; label: string }> = {
   critical: { icon: OctagonAlert, label: 'Critical' }, high: { icon: AlertTriangle, label: 'High' }, moderate: { icon: AlertCircle, label: 'Moderate' }, info: { icon: Info, label: 'Note' },
@@ -46,7 +48,7 @@ export default function PatientPage({ id, overview }: { id: number; overview: Ov
           {p.conditions.length > 0 && <div className="tags">{p.conditions.map(c => <span key={c} className="tag">{c}</span>)}</div>}
           {p.reasons.length > 0 && <div className="tags">{p.reasons.map(r => <span key={r} className="tag warn">{r}</span>)}</div>}
         </div>
-        <div className="hero-side"><small>Last reading</small><b>{ago(v.at)}</b>{p.caregivers.length > 0 && <small>Caregivers: {p.caregivers.join(', ')}</small>}</div>
+        <div className="hero-side"><ConsultButton patientId={id} label="Start consultation" /><small>Last reading</small><b>{ago(v.at)}</b>{p.caregivers.length > 0 && <small>Caregivers: {p.caregivers.join(', ')}</small>}</div>
       </section>
 
       <div className="tabbar">
@@ -68,6 +70,7 @@ export default function PatientPage({ id, overview }: { id: number; overview: Ov
           {tab === 'medication' && <Medication a={a} d={d} />}
           {tab === 'careplan' && <CarePlan id={id} name={p.name} />}
           {tab === 'habits' && <HabitsTab id={id} />}
+          {tab === 'visits' && <VisitsTab id={id} />}
           {tab === 'records' && <Records d={d} />}
         </motion.div>
       </AnimatePresence>
@@ -236,7 +239,7 @@ function Medication({ a, d }: { a: Analytics | null; d: Detail | null }) {
     <>
       <div className="grid-2">
         <section className="card"><div className="card-head"><h2>Doses taken</h2><small>Last {m.daily.length} days</small></div>
-          <div className="gauges one"><Gauge value={m.adherence_pct} label="Taken" sub={change === null ? 'Share of scheduled doses logged as taken' : `Second half of the window ${signed(change, 0)} points against the first half`} /></div>
+          <div className="gauges one"><Gauge value={m.adherence_pct} label="Taken" sub={m.adherence_pct === null ? `Not enough doses have been due yet to judge (${m.due} so far). This is not 0%.` : change === null ? `${m.taken} of ${m.due} doses that were due are logged as taken${m.unlogged ? `, ${m.unlogged} not logged` : ''}` : `Second half of the window ${signed(change, 0)} points against the first half`} /></div>
           <AdherenceGrid days={m.daily} />
           <ul className="legend2"><li><i className="a-full" />All taken</li><li><i className="a-part" />Half or more</li><li><i className="a-low" />Some</li><li><i className="a-none" />None</li></ul>
         </section>
@@ -269,6 +272,25 @@ function Records({ d }: { d: Detail | null }) {
           <li><div><b>Family history</b><small>{d.profile.family_history.length ? d.profile.family_history.join(', ') : 'None recorded'}</small></div></li>
           <li><div><b>Emergency contact</b><small>{d.profile.emergency_contact || 'None recorded'}</small></div></li>
         </ul></section>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ visits: consultations and the documents issued
+function VisitsTab({ id }: { id: number }) {
+  const [c, setC] = useState<Consultation[] | null>(null);
+  const [docs, setDocs] = useState<ClinicDoc[]>([]);
+  useEffect(() => { getPatientConsultations(id).then(r => setC(r.consultations)).catch(() => setC([])); getPatientDocuments(id).then(r => setDocs(r.documents)).catch(() => {}); }, [id]);
+  if (!c) return <div className="card"><Skeleton h={160} /></div>;
+  return (
+    <div className="grid-2">
+      <section className="card"><div className="card-head"><h2>Consultations</h2><ConsultButton patientId={id} label="New consultation" small /></div>
+        {c.length === 0 ? <Empty icon={<Stethoscope size={26} />} title="No consultations yet">Start one to write a note, prescribe and book the follow-up.</Empty> : (
+          <ul className="plain">{c.map(x => <li key={x.id}><a href={`#/consult/${x.id}`}><div><b>{x.diagnoses.map(y => y.label).join('; ') || x.complaint || 'Consultation'}</b><small>{when(x.signed_at || x.started_at)}, {x.status === 'signed' ? 'signed' : 'draft, unsigned'}</small></div></a></li>)}</ul>)}
+      </section>
+      <section className="card"><div className="card-head"><h2>Documents issued</h2></div>
+        {docs.length === 0 ? <p className="muted">No referrals, sick notes or letters yet.</p> : <ul className="plain">{docs.map(x => <li key={x.id}><a href={`#/doc/${x.id}`}><div><b>{x.title}</b><small>{x.ref}{x.revoked ? ', withdrawn' : ''}</small></div></a></li>)}</ul>}
+      </section>
     </div>
   );
 }

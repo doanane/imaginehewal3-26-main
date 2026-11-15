@@ -6,12 +6,12 @@ from app.database import Base
 
 
 class BehaviorPlan(Base):
-    """One behaviour a user chose to work on (movement, nutrition, sleep, smoking)."""
+    """One behaviour a user chose to work on (movement, activity, nutrition, sleep)."""
     __tablename__ = "behavior_plans"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    behavior = Column(String, nullable=False)       # movement|nutrition|sleep|smoking
+    behavior = Column(String, nullable=False)       # movement|activity|nutrition|sleep
     goal_text = Column(String, nullable=True)       # the user's own words
     baseline_value = Column(Float, nullable=False)  # where the user is today
     goal_value = Column(Float, nullable=False)      # where the user wants to get to

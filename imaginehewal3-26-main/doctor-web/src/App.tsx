@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
-import { Activity, BarChart3, CalendarDays, LayoutDashboard, LogOut, Siren, Users, WifiOff } from 'lucide-react';
+import { Activity, BarChart3, CalendarClock, CalendarDays, FileText, HeartPulse, LayoutDashboard, MessageSquare, Siren, Users, WifiOff } from 'lucide-react';
 import { getAppointments, getInbox, getOverview, Profile, loadSession, saveSession, setExpiredHandler, Session } from './api';
 import Login from './Login';
 import OverviewPage from './OverviewPage';
@@ -9,17 +9,30 @@ import PatientPage from './PatientPage';
 import AlertsPage from './AlertsPage';
 import ProfilePage from './ProfilePage';
 import AppointmentsPage from './AppointmentsPage';
+import TodayPage from './TodayPage';
+import SchedulePage from './SchedulePage';
+import MessagesPage from './MessagesPage';
+import DocumentsPage from './DocumentsPage';
+import ConsultPage from './ConsultPage';
+import VerifyPage from './VerifyPage';
+import CommandPalette from './CommandPalette';
+import { PrintDoc, PrintRx } from './PrintDoc';
 import ImpactPage from './ImpactPage';
 import TopBar from './TopBar';
+import Logo from './Logo';
 import { CallProvider } from './calls';
 import { realtime } from './realtime';
 import type { Overview } from './types';
 import { initials, useHashRoute, usePolling } from './util';
 
 const NAV = [
-  { href: '#/', label: 'Overview', icon: LayoutDashboard, match: (r: string) => r === '#/' || r === '' },
+  { href: '#/', label: 'Today', icon: LayoutDashboard, match: (r: string) => r === '#/' || r === '' || r.startsWith('#/consult/') },
+  { href: '#/schedule', label: 'Schedule', icon: CalendarClock, match: (r: string) => r.startsWith('#/schedule') },
   { href: '#/patients', label: 'Patients', icon: Users, match: (r: string) => r.startsWith('#/patients') || r.startsWith('#/patient/') },
+  { href: '#/messages', label: 'Messages', icon: MessageSquare, match: (r: string) => r.startsWith('#/messages') },
   { href: '#/appointments', label: 'Appointments', icon: CalendarDays, match: (r: string) => r.startsWith('#/appointments') },
+  { href: '#/documents', label: 'Documents', icon: FileText, match: (r: string) => r.startsWith('#/documents') || r.startsWith('#/doc/') || r.startsWith('#/rx/') },
+  { href: '#/panel', label: 'Panel health', icon: HeartPulse, match: (r: string) => r.startsWith('#/panel') },
   { href: '#/impact', label: 'Impact', icon: BarChart3, match: (r: string) => r.startsWith('#/impact') },
   { href: '#/alerts', label: 'Emergencies', icon: Siren, match: (r: string) => r.startsWith('#/alerts') },
 ];
@@ -35,6 +48,8 @@ export default function App() {
   }, []);
   useEffect(() => { setExpiredHandler(() => signOut(true)); }, [signOut]);
 
+  const pub = /^#\/verify\/?(.*)$/.exec(route);          // the check page works without signing in
+  if (pub) return <MotionConfig reducedMotion="user"><VerifyPage initial={decodeURIComponent(pub[1] || '')} /></MotionConfig>;
   return (
     <MotionConfig reducedMotion="user">
       {session ? <CallProvider><Shell session={session} route={route} signOut={() => signOut(false)} onProfile={p => { const s = { ...session, doctor: { ...session.doctor, full_name: p.full_name, specialization: p.specialization, hospital: p.hospital } }; saveSession(s); setSession(s); }} /></CallProvider> : <Login notice={notice} onSignedIn={s => { setNotice(''); setSession(s); }} />}
@@ -62,7 +77,7 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
       }),
       realtime.on('presence', () => reload()),
       realtime.on('doctor_message.new', e => {
-        if (new RegExp(`^#/patient/${e.patient_id}\b`).test(window.location.hash)) return;   // already reading this chat
+        if (new RegExp(`^#/(patient|messages)/${e.patient_id}(\\b|$)`).test(window.location.hash)) return;   // already reading this chat
         setUnread(u => ({ ...u, [e.patient_id]: (u[e.patient_id] || 0) + 1 }));
         setToast(`New message from ${e.patient_name || 'a patient'}`);
         window.setTimeout(() => setToast(''), 5000);
@@ -76,22 +91,40 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
   const unreadTotal = Object.values(unread).reduce((a, b) => a + b, 0);
   const d = session.doctor;
   const patient = /^#\/patient\/(\d+)/.exec(route);
-  const pageKey = patient ? `p${patient[1]}` : route.split('?')[0];
+  const pageKey = patient ? `p${patient[1]}` : route.startsWith('#/messages') ? '#/messages' : route.split('?')[0];
   const alerts = data?.stats.active_alerts ?? 0;
 
+  const consult = /^#\/consult\/(\d+)/.exec(route);
+  const doc = /^#\/doc\/(\d+)/.exec(route);
+  const rx = /^#\/rx\/(\d+)/.exec(route);
+  const chat = /^#\/messages\/(\d+)/.exec(route);
+  useEffect(() => { if (chat) setUnread(u => { if (!u[chat[1]]) return u; const n = { ...u }; delete n[chat[1]]; return n; }); });
+  const notes = [
+    ...(alerts > 0 ? [{ text: `${alerts} open emergenc${alerts === 1 ? 'y' : 'ies'}`, href: '#/alerts' }] : []),
+    ...(requests > 0 ? [{ text: `${requests} appointment request${requests === 1 ? '' : 's'} waiting`, href: '#/appointments' }] : []),
+    ...(unreadTotal > 0 ? [{ text: `${unreadTotal} unread message${unreadTotal === 1 ? '' : 's'}`, href: '#/messages' }] : []),
+  ];
+
   let page: React.ReactNode;
-  if (patient) page = <PatientPage id={Number(patient[1])} overview={data} />;
+  if (consult) page = <ConsultPage id={Number(consult[1])} />;
+  else if (doc) page = <PrintDoc id={Number(doc[1])} />;
+  else if (rx) page = <PrintRx patientId={Number(rx[1])} doctor={d} />;
+  else if (route.startsWith('#/schedule')) page = <SchedulePage overview={data} />;
+  else if (route.startsWith('#/messages')) page = <MessagesPage selected={chat ? Number(chat[1]) : null} />;
+  else if (route.startsWith('#/documents')) page = <DocumentsPage overview={data} />;
+  else if (route.startsWith('#/panel')) page = <OverviewPage overview={data} error={error} />;
+  else if (patient) page = <PatientPage id={Number(patient[1])} overview={data} />;
   else if (route.startsWith('#/patients')) page = <PatientsPage overview={data} error={error} unread={unread} />;
   else if (route.startsWith('#/alerts')) page = <AlertsPage overview={data} />;
   else if (route.startsWith('#/appointments')) page = <AppointmentsPage />;
   else if (route.startsWith('#/impact')) page = <ImpactPage />;
   else if (route.startsWith('#/profile')) page = <ProfilePage onSaved={onProfile} />;
-  else page = <OverviewPage overview={data} error={error} />;
+  else page = <TodayPage overview={data} error={error} />;
 
   return (
     <div className="shell">
       <aside className="side">
-        <a className="brand-row" href="#/"><span className="logo-mark"><Activity size={20} strokeWidth={2.4} /></span><span className="brand-name">HEWAL3</span></a>
+        <a className="brand-row" href="#/"><Logo width={168} /></a>
         <nav aria-label="Main">
           {NAV.map(n => {
             const active = n.match(route);
@@ -99,7 +132,7 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
               <a key={n.href} href={n.href} className={`nav ${active ? 'on' : ''}`} aria-current={active ? 'page' : undefined}>
                 {active && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
                 <n.icon size={19} /><span>{n.label}</span>
-                {n.label === 'Patients' && unreadTotal > 0 && <em className="count msg" aria-label={`${unreadTotal} unread messages`}>{unreadTotal}</em>}
+                {n.label === 'Messages' && unreadTotal > 0 && <em className="count msg" aria-label={`${unreadTotal} unread messages`}>{unreadTotal}</em>}
                 {n.label === 'Appointments' && requests > 0 && <em className="count msg" aria-label={`${requests} requests waiting`}>{requests}</em>}
                 {n.label === 'Emergencies' && alerts > 0 && <em className="count" aria-label={`${alerts} active`}>{alerts}</em>}
               </a>
@@ -114,7 +147,8 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
         </div>
       </aside>
       <main className="main" id="content">
-        <TopBar doctor={d} signOut={signOut} />
+        <TopBar doctor={d} signOut={signOut} notes={notes} />
+        <CommandPalette overview={data} />
         <AnimatePresence mode="wait">
           <motion.div key={pageKey} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
             {page}

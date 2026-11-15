@@ -35,6 +35,8 @@ export interface MetricBlock {
 }
 export interface Finding { level: 'critical' | 'high' | 'moderate' | 'info'; title: string; evidence: string }
 export interface MedicationStats {
+  /** null while fewer than 3 doses were due: there is nothing fair to judge yet, which is NOT the same as 0% */
+  due: number; taken: number; skipped: number; unlogged: number;
   adherence_pct: number | null; daily: { day: string; taken: number; expected: number }[]; by_time: { time: string; taken_pct: number }[];
   weakest_time: { time: string; taken_pct: number } | null; first_half_pct: number | null; second_half_pct: number | null;
   medicines: { name: string; dose: string | null; times: string[] }[];

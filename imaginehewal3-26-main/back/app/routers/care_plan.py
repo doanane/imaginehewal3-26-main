@@ -9,7 +9,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.auth.security import get_current_active_doctor, get_current_active_user, get_current_user_or_admin
@@ -157,7 +157,7 @@ def doctor_appointments(scope: str = "upcoming", db: Session = Depends(get_db), 
     """scope=upcoming (requests and confirmed, from now) or scope=past."""
     q = db.query(DoctorAppointment).filter(DoctorAppointment.doctor_pk == doctor.id)
     if scope == "past":
-        rows = q.filter(DoctorAppointment.starts_at < _now()).order_by(DoctorAppointment.starts_at.desc()).limit(100).all()
+        rows = q.filter(or_(DoctorAppointment.starts_at < _now(), DoctorAppointment.status == "completed")).order_by(DoctorAppointment.starts_at.desc()).limit(100).all()      # a visit finished ahead of its slot is still past
     else:
         rows = q.filter(DoctorAppointment.starts_at >= _now() - timedelta(hours=1), DoctorAppointment.status.in_(("requested", "confirmed"))) \
                 .order_by(DoctorAppointment.starts_at.asc()).limit(200).all()

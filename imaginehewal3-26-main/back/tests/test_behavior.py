@@ -18,7 +18,6 @@ def days(*pairs):
 def test_targets_are_a_small_step_and_monotonic():
     ts = [eng.target_for("movement", 3000, 8000, lv) for lv in range(1, 6)]
     assert ts == sorted(ts) and ts[0] > 3000 and ts[-1] == 8000
-    assert eng.target_for("smoking", 10, 0, 1) < 10  # always a step down
     assert eng.target_for("movement", 3000, 8000, 5, comeback=True) < ts[1]
 
 
@@ -58,9 +57,6 @@ def test_barrier_adapts_action_and_explains():
 
 def test_status_from_value_directions():
     assert eng.status_from_value("movement", 6000, 5000, 3000) == "done"
-    assert eng.status_from_value("smoking", 4, 5, 10) == "done"
-    assert eng.status_from_value("smoking", 8, 5, 10) == "partial"
-    assert eng.status_from_value("smoking", 12, 5, 10) == "skipped"
 
 
 def test_outcomes_recovery_time():

@@ -84,6 +84,9 @@ def _contacts(key: int) -> set:
 _in_call: dict = {}
 # invitations for someone whose app is closed: delivered when they open it (from the push), for up to RING_S seconds
 _pending: dict = {}
+# which device (socket) of a person is part of a call: (call_id, user key) -> websocket. Someone signed in on a phone AND a laptop gets the
+# ring on both; once one answers, the other is told to stop and the call's audio signalling goes only to the device that answered.
+_sock: dict = {}
 RING_S = 45
 CALL_KINDS = ("audio", "video")
 
@@ -163,10 +166,16 @@ async def ws_endpoint(websocket: WebSocket):
                     if _in_call.get(to) or _in_call.get(user_id):
                         await websocket.send_json({"type": "call.unavailable", "call_id": call_id, "reason": "busy", "from_user_id": to})
                         continue
+                    if to > 0 and hub.is_online(to):
+                        # the app is connected, but it may be in the background where a socket message makes no sound: ring the phone too
+                        # (the app hides this notification when it is open on screen and rings by itself)
+                        asyncio.get_running_loop().run_in_executor(None, lambda: push.notify_users(
+                            [to], f"Incoming {out['media']} call", f"{my_name} is calling you on HEWAL3.", {"type": "call", "call_id": call_id}, True, True))
                     if not hub.is_online(to):
                         # app closed: wake the phone with a push and hold the invitation until they open the app
                         woke = await asyncio.to_thread(push.notify_users, [to], f"Incoming {out['media']} call",
                                                        f"{my_name} is calling you on HEWAL3. Open the app to answer.", {"type": "call", "call_id": call_id}, True)
+                        _sock[(call_id, user_id)] = websocket
                         if not woke:
                             await websocket.send_json({"type": "call.unavailable", "call_id": call_id, "reason": "offline", "from_user_id": to})
                             continue
@@ -182,11 +191,30 @@ async def ws_endpoint(websocket: WebSocket):
                     for k in (user_id, to):
                         if _in_call.get(k, (None, None))[1] == call_id:
                             _in_call.pop(k, None)
+                    if kind == "call.reject" and _sock.get((call_id, user_id)) is None:
+                        await hub.send_except(user_id, websocket, {"type": "call.handled", "call_id": call_id, "reason": "declined_elsewhere"})
+                    target = _sock.pop((call_id, to), None)
+                    _sock.pop((call_id, user_id), None)
+                    if target is not None:
+                        await hub.send_ws(to, target, out)          # only the device that is actually in the call
+                        continue
+                elif kind == "call.accept":
+                    _sock[(call_id, user_id)] = websocket
+                    await hub.send_except(user_id, websocket, {"type": "call.handled", "call_id": call_id, "reason": "answered_elsewhere"})
+                    target = _sock.get((call_id, to))
+                    if target is not None:
+                        await hub.send_ws(to, target, out)
+                        continue
                 elif kind == "call.signal":
                     sig = data.get("data")
                     if not isinstance(sig, dict):
                         continue
                     out["data"] = sig
+                    target = _sock.get((call_id, to))
+                    if target is not None and await hub.send_ws(to, target, out):
+                        continue
+                if kind == "call.invite":
+                    _sock[(call_id, user_id)] = websocket           # the calling device
                 await hub.send(to, out)
     except (WebSocketDisconnect, asyncio.TimeoutError):
         pass
@@ -194,6 +222,8 @@ async def ws_endpoint(websocket: WebSocket):
         logger.warning("ws error user=%s: %s", user_id, type(e).__name__)
     finally:
         hub.unregister(user_id, websocket)
+        for k in [k for k, v in _sock.items() if v is websocket]:
+            _sock.pop(k, None)
         if not hub.is_online(user_id):
             peer = _in_call.pop(user_id, None)         # hang up on the other side when someone drops out
             if peer:

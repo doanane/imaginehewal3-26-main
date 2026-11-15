@@ -3,6 +3,7 @@ import { ThemeToggle } from './theme';
 import { motion } from 'framer-motion';
 import { Activity, AlertCircle, Eye, EyeOff, Lock, ShieldCheck, Stethoscope, UserRound } from 'lucide-react';
 import { login, saveSession, Session } from './api';
+import Logo from './Logo';
 
 const Scene3D = lazy(() => import('./Scene3D'));
 
@@ -35,7 +36,7 @@ export default function Login({ notice, onSignedIn }: { notice: string; onSigned
       <section className="login-hero">
         <Suspense fallback={null}><Scene3D /></Suspense>
         <div className="hero-copy">
-          <div className="brand-row"><span className="logo-mark"><Activity size={22} strokeWidth={2.4} /></span><span className="brand-name">HEWAL3</span></div>
+          <div className="brand-row"><Logo width={200} /></div>
           <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
             Your patients, measured and in one place.
           </motion.h1>

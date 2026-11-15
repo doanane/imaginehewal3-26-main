@@ -12,6 +12,16 @@ type Phase = 'idle' | 'calling' | 'ringing' | 'connecting' | 'active';
 interface Call { phase: Phase; peer: number; name: string; media: Media; id: string; note?: string }
 const IDLE: Call = { phase: 'idle', peer: 0, name: '', media: 'audio', id: '' };
 
+/** Browsers only let a page play sound after a tap. Called from the Accept / Call click, it plays a silent clip once and wakes the audio system. */
+function unlockAudio() {
+  try {
+    const C = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+    const ctx = new C(); void ctx.resume();
+    const b = ctx.createBuffer(1, 1, 22050), s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0);
+    window.setTimeout(() => ctx.close().catch(() => {}), 500);
+  } catch { /* nothing to unlock */ }
+}
+
 const FALLBACK_ICE: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 interface Ctx { call: Call; start: (peer: number, name: string, media: Media) => void; supported: boolean }
@@ -31,8 +41,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
   const [secs, setSecs] = useState(0);
-  const [net, setNet] = useState({ sending: false, hearing: false });
-  const lastBytes = useRef({ sent: 0, recv: 0 });
+  const [silent, setSilent] = useState(false);
+  const lastEnergy = useRef(-1);
+  const quiet = useRef(0);
   const supported = typeof RTCPeerConnection !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
   const set = (c: Call) => { callRef.current = c; setCall(c); };
@@ -66,6 +77,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   const start = useCallback(async (peer: number, name: string, media: Media) => {
     if (callRef.current.phase !== 'idle') return;
+    unlockAudio();
     if (!realtime.up) { set({ ...IDLE, note: 'Not connected yet. Try again in a moment.' }); return; }
     const id = (crypto.randomUUID?.() || String(Date.now()));
     getIce().then(r => { ice.current = r.iceServers; }).catch(() => {});   // STUN, plus a TURN relay with short-lived credentials when the server has one
@@ -77,6 +89,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   const accept = async () => {
     const c = callRef.current;
+    unlockAudio();                      // inside the click, so the browser allows the other person's voice to play
     await getIce().then(r => { ice.current = r.iceServers; }).catch(() => {});
     try { await getMedia(c.media); } catch { realtime.send({ type: 'call.reject', to: c.peer, call_id: c.id }); cleanup('Microphone access was blocked.'); return; }
     buildPc(c.peer, c.id);
@@ -124,6 +137,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           }
         }
       }),
+      realtime.on('call.handled', e => { if (e.call_id === callRef.current.id && callRef.current.phase === 'ringing') cleanup(); }),
       realtime.on('call.ringing', e => { if (e.call_id === callRef.current.id) set({ ...callRef.current, note: 'Their app is closed. A notification was sent; the call rings when they open it.' }); }),
       realtime.on('call.reject', e => { if (e.call_id === callRef.current.id) cleanup('The patient declined the call.'); }),
       realtime.on('call.end', e => { if (e.call_id === callRef.current.id) cleanup(e.reason === 'dropped' ? 'The other side lost connection.' : 'Call ended.'); }),
@@ -139,13 +153,20 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     let t: number | undefined;
     try {
       ctx = new AudioContext();
-      const beep = () => {
+      ctx.resume().catch(() => {});
+      // the classic double ring: two bursts of two tones (440 and 480 Hz), then a pause
+      const burst = (at: number) => {
         if (!ctx) return;
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.frequency.value = 440; g.gain.value = 0.05; o.connect(g); g.connect(ctx.destination);
-        o.start(); o.stop(ctx.currentTime + 0.4);
+        for (const f of [440, 480]) {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+          g.gain.setValueAtTime(0, ctx.currentTime + at); g.gain.linearRampToValueAtTime(0.14, ctx.currentTime + at + 0.03);
+          g.gain.setValueAtTime(0.14, ctx.currentTime + at + 0.38); g.gain.linearRampToValueAtTime(0, ctx.currentTime + at + 0.42);
+          o.start(ctx.currentTime + at); o.stop(ctx.currentTime + at + 0.45);
+        }
       };
-      beep(); t = window.setInterval(beep, 1800);
+      const ring = () => { burst(0); burst(0.6); };
+      ring(); t = window.setInterval(ring, 3000);
     } catch { /* silent ring is fine */ }
     return () => { if (t) window.clearInterval(t); ctx?.close().catch(() => {}); };
   }, [call.phase]);
@@ -158,17 +179,17 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   // Every 1.5 s, ask the browser whether voice bytes are really moving each way, so "I cannot hear you" can be told apart from "nothing is arriving".
   useEffect(() => {
-    if (call.phase !== 'active' && call.phase !== 'connecting') { lastBytes.current = { sent: 0, recv: 0 }; setNet({ sending: false, hearing: false }); return; }
+    if (call.phase !== 'active') { lastEnergy.current = -1; quiet.current = 0; setSilent(false); return; }
     const t = window.setInterval(async () => {
       const p = pc.current;
       if (!p) return;
-      let sent = 0, recv = 0;
-      (await p.getStats()).forEach((r: any) => {
-        if (r.type === 'outbound-rtp' && r.kind === 'audio') sent += r.bytesSent || 0;
-        if (r.type === 'inbound-rtp' && r.kind === 'audio') recv += r.bytesReceived || 0;
-      });
-      setNet({ sending: sent > lastBytes.current.sent, hearing: recv > lastBytes.current.recv });
-      lastBytes.current = { sent, recv };
+      // Sound arriving carries energy. Bytes alone also arrive when the other microphone captures silence, so measure the loudness.
+      let energy: number | null = null;
+      (await p.getStats()).forEach((r: any) => { if (r.type === 'inbound-rtp' && r.kind === 'audio' && typeof r.totalAudioEnergy === 'number') energy = r.totalAudioEnergy; });
+      if (energy === null) return;
+      quiet.current = energy > lastEnergy.current + 1e-9 ? 0 : quiet.current + 1;
+      lastEnergy.current = energy;
+      setSilent(quiet.current >= 7);
     }, 1500);
     return () => window.clearInterval(t);
   }, [call.phase]);
@@ -179,7 +200,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   return (
     <CallCtx.Provider value={{ call, start, supported }}>
       {children}
-      <CallOverlay call={call} remote={remote} local={localStream} muted={muted} camOff={camOff} secs={secs} net={net}
+      <CallOverlay call={call} remote={remote} local={localStream} muted={muted} camOff={camOff} secs={secs} silent={silent}
         onAccept={accept} onHangup={hangup} onMic={toggleMic} onCam={toggleCam} />
     </CallCtx.Provider>
   );
@@ -193,11 +214,17 @@ function RemoteAudio({ stream }: { stream: MediaStream | null }) {
     const el = ref.current;
     if (!el || !stream) return;
     el.srcObject = stream;
-    el.play().then(() => setBlocked(false)).catch(() => setBlocked(true));
+    el.muted = false; el.volume = 1;
+    const go = () => el.play().then(() => setBlocked(false)).catch(() => setBlocked(true));
+    go();
+    const again = () => { if (el.paused) go(); };               // any tap or key press also starts it if the browser blocked it
+    window.addEventListener('pointerdown', again); window.addEventListener('keydown', again);
+    stream.addEventListener('addtrack', go);
+    return () => { window.removeEventListener('pointerdown', again); window.removeEventListener('keydown', again); stream.removeEventListener('addtrack', go); };
   }, [stream]);
   return (
     <>
-      <audio ref={ref} autoPlay />
+      <audio ref={ref} autoPlay playsInline />
       {blocked && <button className="call-unmute" onClick={() => ref.current?.play().then(() => setBlocked(false)).catch(() => {})}>Click to turn on sound</button>}
     </>
   );
@@ -209,8 +236,8 @@ function Stream({ stream, muted, className }: { stream: MediaStream | null; mute
   return <video ref={ref} className={className} autoPlay playsInline muted={muted} />;
 }
 
-function CallOverlay({ call, remote, local, muted, camOff, secs, net, onAccept, onHangup, onMic, onCam }: {
-  call: Call; remote: MediaStream | null; local: MediaStream | null; muted: boolean; camOff: boolean; secs: number; net: { sending: boolean; hearing: boolean };
+function CallOverlay({ call, remote, local, muted, camOff, secs, silent, onAccept, onHangup, onMic, onCam }: {
+  call: Call; remote: MediaStream | null; local: MediaStream | null; muted: boolean; camOff: boolean; secs: number; silent: boolean;
   onAccept: () => void; onHangup: () => void; onMic: () => void; onCam: () => void;
 }) {
   const live = call.phase !== 'idle';
@@ -234,12 +261,7 @@ function CallOverlay({ call, remote, local, muted, camOff, secs, net, onAccept, 
               )}
               {call.media === 'video' && remote && <div className="call-name-tag">{call.name}</div>}
               <div className="call-state" aria-live="polite">{label}</div>
-              {(call.phase === 'active' || call.phase === 'connecting') && (
-                <div className="call-meter" aria-live="polite">
-                  <span className={net.sending ? 'ok' : 'bad'}>{muted ? 'Your microphone is muted' : net.sending ? 'Your voice is being sent' : 'Your voice is not being sent'}</span>
-                  <span className={net.hearing ? 'ok' : 'bad'}>{net.hearing ? 'Receiving their voice' : 'Not receiving their voice yet'}</span>
-                </div>
-              )}
+              {call.phase === 'active' && (muted || silent) && <div className="call-meter" aria-live="polite"><span className="bad">{muted ? 'Your microphone is muted' : 'We cannot hear them yet. Ask them to check their microphone and speak up.'}</span></div>}
               {call.media === 'video' && local && <Stream stream={local} muted className="call-self" />}
               <div className="call-actions">
                 {call.phase === 'ringing' ? (

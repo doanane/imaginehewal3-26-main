@@ -180,33 +180,20 @@ def _metric_block(key: str, rows: List[Dict[str, Any]], prev_rows: List[Dict[str
 
 
 def _medication(db: Session, user: User, days: int) -> Optional[Dict[str, Any]]:
-    meds = db.query(Medication).filter_by(user_id=user.id, active=True).all()
-    if not meds:
+    """Adherence over the doses that were DUE (see services/adherence.py). With too little due, `adherence_pct` is None and the page says so."""
+    from app.services import adherence
+    r = adherence.adherence(db, user.id, days)
+    if r is None:
         return None
-    today = date.today()
-    start = today - timedelta(days=days - 1)
-    logs = db.query(MedicationLog).filter(MedicationLog.user_id == user.id, MedicationLog.day >= start).all()
-    taken = {(l.medication_id, l.day, l.time) for l in logs if l.status == "taken"}
-    per_day_expected = sum(len(m.times or []) for m in meds)
-    daily, slot_expected, slot_taken = [], defaultdict(int), defaultdict(int)
-    for i in range(days):
-        d = start + timedelta(days=i)
-        got = sum(1 for m in meds for t in (m.times or []) if (m.id, d, t) in taken)
-        daily.append({"day": d.isoformat(), "taken": got, "expected": per_day_expected})
-        for m in meds:
-            for t in (m.times or []):
-                slot_expected[t] += 1
-                slot_taken[t] += 1 if (m.id, d, t) in taken else 0
-    exp, got = per_day_expected * days, sum(d["taken"] for d in daily)
-    by_slot = [{"time": t, "taken_pct": round(slot_taken[t] / slot_expected[t] * 100)} for t in sorted(slot_expected)]
+    daily = r["daily"]
+    by_slot = r["by_time"]
     weakest = min(by_slot, key=lambda s: s["taken_pct"]) if by_slot else None
     half = days // 2
-    first, second = daily[:half], daily[half:]
-    pct = lambda ds: round(sum(x["taken"] for x in ds) / max(1, sum(x["expected"] for x in ds)) * 100)  # noqa: E731
-    return {"adherence_pct": round(min(1.0, got / exp) * 100) if exp else None, "daily": daily, "by_time": by_slot,
-            "weakest_time": weakest if weakest and weakest["taken_pct"] < 80 else None,
-            "first_half_pct": pct(first) if first else None, "second_half_pct": pct(second) if second else None,
-            "medicines": [{"name": m.name, "dose": m.dose, "times": m.times or []} for m in meds]}
+    pct = lambda ds: (round(sum(x["taken"] for x in ds) / sum(x["expected"] for x in ds) * 100) if sum(x["expected"] for x in ds) else None)  # noqa: E731
+    return {"adherence_pct": r["pct"], "due": r["due"], "taken": r["taken"], "skipped": r["skipped"], "unlogged": r["unlogged"],
+            "daily": daily, "by_time": by_slot, "weakest_time": weakest if weakest and r["pct"] is not None and weakest["taken_pct"] < 80 else None,
+            "first_half_pct": pct(daily[:half]) if daily[:half] else None, "second_half_pct": pct(daily[half:]) if daily[half:] else None,
+            "medicines": r["medicines"]}
 
 
 def _findings(blocks: Dict[str, Dict[str, Any]], bp_cats: Dict[str, int], med: Optional[Dict[str, Any]], coverage: Dict[str, Any], steps: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:

@@ -58,7 +58,7 @@ export default function OverviewPage({ overview, error }: { overview: Overview |
           {!cohort ? <Skeleton h={160} /> : (
             <div className="gauges">
               <Gauge value={cohort.bp_control.pct} label="BP controlled" sub={cohort.bp_control.measured ? `${cohort.bp_control.controlled} of ${cohort.bp_control.measured} patients average below 140/90 mmHg` : 'No blood pressure readings yet'} />
-              <Gauge value={cohort.adherence.mean} label="Medication taken" sub={cohort.adherence.measured ? `${cohort.adherence.below_70} of ${cohort.adherence.measured} patients below 70%` : 'No medication schedules yet'} />
+              <Gauge value={cohort.adherence.mean} label="Medication taken" sub={cohort.adherence.measured ? `${cohort.adherence.below_70} of ${cohort.adherence.measured} patients below 70%` : 'Not enough doses have been due yet to judge, this is not 0%'} />
             </div>
           )}
         </section>

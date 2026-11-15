@@ -59,7 +59,7 @@ def test_risk_tiers_follow_the_guidelines(env):
 def test_bp_crisis_is_urgent_regardless_of_score(env):
     from app.services.risk_service import score, bp_category
     base = dict(age=30, bmi=22, systolic=185, diastolic=125, glucose=None, conditions=[], family_history=False, avg_hr=None,
-                avg_spo2=None, avg_steps=None, avg_sleep_min=None, avg_diet=None, med_adherence=None, smoking=False)
+                avg_spo2=None, avg_steps=None, avg_sleep_min=None, avg_diet=None, med_adherence=None)
     assert bp_category(185, 125) == "crisis" and score(base)["tier"] == "urgent"
     assert bp_category(119, 79) == "normal" and bp_category(125, 70) == "elevated" and bp_category(135, 75) == "stage1" and bp_category(145, 85) == "stage2"
 
@@ -174,7 +174,7 @@ def test_medicine_flow(env):
     assert c.post(f"/medications/{m['id']}/log", json={"time": "09:30", "status": "taken"}, headers=env["hs"]).status_code == 400
     assert c.post(f"/medications/{m['id']}/log", json={"time": "08:00", "status": "maybe"}, headers=env["hs"]).status_code == 422
     after = c.get("/medications/today", headers=env["hs"]).json()
-    assert after["taken"] == 1 and 0 < after["weekly_adherence"] <= 1
+    assert after["taken"] == 1 and (after["weekly_adherence"] is None or 0 < after["weekly_adherence"] <= 1)   # None: fewer than 3 doses were due, which is not 0%
     assert c.post(f"/medications/{m['id']}/log", json={"time": "08:00", "status": "taken"}, headers=env["ho"]).status_code == 404   # not someone else's
     assert c.delete(f"/medications/{m['id']}", headers=env["ho"]).status_code == 404
     assert c.delete(f"/medications/{m['id']}", headers=env["hs"]).json()["removed"] is True

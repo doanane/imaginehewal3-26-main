@@ -179,6 +179,38 @@ def _workout_full(w: Workout) -> dict:
             "flag_note": "We could not verify the speed of this activity, so it does not count on leaderboards." if w.flagged else None}
 
 
+STRIDE = {"walk": 0.415, "run": 0.50}     # metres of stride per metre of height: common anthropometric ratios, used only for a labelled estimate
+
+
+def _with_extras(db: Session, user: User, w: Workout) -> dict:
+    """The saved workout plus two things worked out at read time, each labelled with where it came from:
+    heart rate from real readings taken during the workout (only when the workout has none of its own), and, when GPS recorded no distance,
+    a steps based distance estimate that the app must show as an estimate."""
+    out = _workout_full(w)
+    start = _utc(w.started_at)
+    end = start + timedelta(seconds=w.duration_s)
+    hr_source = "workout" if w.avg_hr else None
+    if not w.avg_hr:
+        rows = db.query(VitalReading.heart_rate).filter(VitalReading.user_id == user.id, VitalReading.heart_rate.isnot(None),
+                                                       VitalReading.timestamp >= start, VitalReading.timestamp <= end).all()
+        beats = [r[0] for r in rows if r[0] and 30 <= r[0] <= 230]
+        if len(beats) >= 2:
+            out["avg_hr"], out["max_hr"], hr_source = round(sum(beats) / len(beats)), max(beats), "vitals"
+    out["hr_source"] = hr_source
+    est = None
+    if (w.distance_m or 0) < 20 and (w.steps or 0) >= 20 and w.kind in STRIDE:
+        prof = db.query(UserProfile).filter_by(user_id=user.id).first()
+        try:
+            height_m = float(prof.height) / 100.0 if prof and prof.height and 100 <= float(prof.height) <= 230 else 1.70
+        except (TypeError, ValueError):
+            height_m = 1.70
+        est = {"distance_m": round(w.steps * STRIDE[w.kind] * height_m), "basis": "steps and your height"}
+        est["avg_pace_s_km"] = svc.pace_s_km(est["distance_m"], w.duration_s) if est["distance_m"] >= 50 else None
+    out["estimate"] = est
+    out["cadence_spm"] = round(w.steps / (w.duration_s / 60.0)) if w.steps and w.duration_s >= 30 else None
+    return out
+
+
 @router.post("/workouts")
 def create_workout(body: WorkoutIn, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     started = _utc(body.started_at)
@@ -217,7 +249,7 @@ def get_workout(workout_id: int, db: Session = Depends(get_db), user: User = Dep
     w = db.query(Workout).filter_by(id=workout_id, user_id=user.id).first()
     if not w:
         raise HTTPException(404, "Workout not found")
-    return _workout_full(w)
+    return _with_extras(db, user, w)
 
 
 @router.delete("/workouts/{workout_id}")

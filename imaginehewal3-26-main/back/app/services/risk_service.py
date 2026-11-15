@@ -64,7 +64,6 @@ def gather(db: Session, user: User) -> dict:
         "avg_sleep_min": round(statistics.mean(sleep)) if sleep else None,
         "avg_diet": round(statistics.mean(diet)) if diet else None,
         "med_adherence": med_adherence(db, user.id),
-        "smoking": db.query(BehaviorPlan).filter_by(user_id=user.id, behavior="smoking", active=True).first() is not None,
     }
 
 
@@ -127,7 +126,6 @@ def score(i: dict) -> dict:
     if i["avg_sleep_min"] and i["avg_sleep_min"] < 360: add("sleep", "Short sleep", f"About {round(i['avg_sleep_min'] / 60, 1)} hours a night this week.", 4)
     if i["avg_diet"] is not None and i["avg_diet"] < 50: add("diet", "Meals scoring low for your conditions", f"Average meal score {i['avg_diet']} out of 100 this week.", 4)
     if i["med_adherence"] is not None and i["med_adherence"] < 0.7: add("meds", "Missing medicine doses", f"{round(i['med_adherence'] * 100)}% of doses taken this week.", 6)
-    if i["smoking"]: add("smoking", "Smoking", "You are working on cutting down. Every cigarette less helps.", 6)
 
     total = min(100, sum(f["points"] for f in F))
     tier = "low" if total < 20 else "moderate" if total < 40 else "high" if total < 60 else "urgent"
@@ -174,14 +172,11 @@ def assess(db: Session, user: User) -> dict:
 
 # ------------------------------------------------------------------ medicines
 def med_adherence(db: Session, user_id: int, days: int = 7) -> Optional[float]:
-    meds = db.query(Medication).filter_by(user_id=user_id, active=True).all()
-    if not meds:
-        return None
-    today = date.today()
-    start = today - timedelta(days=days - 1)
-    expected = sum(len(m.times or []) for m in meds) * days
-    taken = db.query(MedicationLog).filter(MedicationLog.user_id == user_id, MedicationLog.day >= start, MedicationLog.status == "taken").count()
-    return min(1.0, taken / expected) if expected else None
+    """Share (0 to 1) of the doses that were DUE which were logged as taken; None when there is no medicine or too little to judge yet.
+    See services/adherence.py for what counts as due: this used to read 0 for a medicine added today."""
+    from app.services import adherence
+    r = adherence.adherence(db, user_id, days)
+    return None if r is None or r["pct"] is None else r["pct"] / 100
 
 
 # ------------------------------------------------------------------ recommendations
@@ -193,7 +188,6 @@ REC = {
     "sleep": ("Protect your sleep", "A regular bedtime and no screens for 30 minutes before bed help.", "/(patient)/(tabs)/assistant"),
     "diet": ("Choose lighter meals", "Try red red with less oil, or grilled fish with kontomire stew.", "/(patient)/nutrition/meal"),
     "meds": ("Take your medicines on time", "Link each dose to a daily routine such as breakfast, and turn on reminders.", "/(patient)/medications"),
-    "smoking": ("Keep going with cutting down", "Delay the first cigarette and swap one a day for water or a walk.", "/(patient)/(tabs)/today"),
     "hr": ("Rest and recheck your heart rate", "Sit quietly for 5 minutes and check again. If it stays high or you feel unwell, speak to your clinician.", "/(patient)/(tabs)/insights"),
     "spo2": ("Check your oxygen level and speak to a clinician", "A low reading that stays low needs medical advice.", "/(patient)/(tabs)/insights"),
 }

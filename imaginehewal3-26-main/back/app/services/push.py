@@ -29,7 +29,8 @@ def _enabled() -> bool:
 
 
 def _deliver(tokens: list, title: str, body: str, data: dict, channel: str, urgent: bool) -> None:
-    msgs = [{"to": t, "title": title, "body": body, "data": data, "sound": "default", "channelId": channel,
+    ring = data.get("type") == "call"          # a call rings: the app bundles ringtone.wav (about 28 s) so the phone rings, not just a ping
+    msgs = [{"to": t, "title": title, "body": body, "data": data, "sound": "ringtone.wav" if ring else "default", "channelId": channel,
              "priority": "high" if urgent else "default", "ttl": 60 if urgent else 3600} for t in tokens]
     try:
         r = requests.post(EXPO_URL, json=msgs, timeout=10, headers={"Accept": "application/json"})
@@ -49,11 +50,12 @@ def _deliver(tokens: list, title: str, body: str, data: dict, channel: str, urge
         logger.warning("push failed: %s", type(e).__name__)
 
 
-def notify_users(user_ids: Iterable[int], title: str, body: str, data: Optional[dict] = None, urgent: bool = False) -> int:
-    """Push to these people's phones, skipping anyone currently connected. Returns how many phones were queued."""
+def notify_users(user_ids: Iterable[int], title: str, body: str, data: Optional[dict] = None, urgent: bool = False, even_if_online: bool = False) -> int:
+    """Push to these people's phones, skipping anyone currently connected (unless even_if_online: a call must ring even when the app is open but
+    in the background, and the app itself hides the banner when it is in the foreground). Returns how many phones were queued."""
     if not _enabled():
         return 0
-    ids = [u for u in set(user_ids) if u and u > 0 and not hub.is_online(u)]
+    ids = [u for u in set(user_ids) if u and u > 0 and (even_if_online or not hub.is_online(u))]
     if not ids:
         return 0
     db = SessionLocal()

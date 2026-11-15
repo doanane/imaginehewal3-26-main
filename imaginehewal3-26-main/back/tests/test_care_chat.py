@@ -117,3 +117,31 @@ def test_doctor_profile_edit_and_password(env):
     r2, h2 = login(c, password="Another1pass")
     assert r2.status_code == 200
     c.post("/doctor-portal/me/password", headers=h2, json={"current_password": "Another1pass", "new_password": "Passw0rd!x1"})   # put it back for other tests
+
+
+def test_call_on_two_devices_of_the_same_doctor(env):
+    """The same doctor signed in on a laptop and a phone: both ring, the one that answers gets the audio signalling, the other is told to stop."""
+    c = env["client"]
+    dtok, ptok, _ = _tokens(env)
+    pid = env["pat"]
+    with c.websocket_connect("/ws") as pws, c.websocket_connect("/ws") as laptop, c.websocket_connect("/ws") as phone:
+        _auth(pws, ptok); dkey = _auth(laptop, dtok)["user_id"]; _auth(phone, dtok)
+
+        def drain_until(ws, kind):
+            for _ in range(12):
+                m = ws.receive_json()
+                if m["type"] == kind:
+                    return m
+            raise AssertionError(kind)
+
+        pws.send_json({"type": "call.invite", "to": dkey, "call_id": "m1", "media": "audio"})
+        drain_until(laptop, "call.invite"); drain_until(phone, "call.invite")             # both devices ring
+        phone.send_json({"type": "call.accept", "to": pid, "call_id": "m1"})
+        assert drain_until(pws, "call.accept")["call_id"] == "m1"
+        assert drain_until(laptop, "call.handled")["reason"] == "answered_elsewhere"      # the laptop stops ringing
+        pws.send_json({"type": "call.signal", "to": dkey, "call_id": "m1", "data": {"type": "offer", "sdp": "v=0"}})
+        assert drain_until(phone, "call.signal")["data"]["type"] == "offer"               # only the answering device gets the audio signalling
+        laptop.send_json({"type": "ping"})
+        assert drain_until(laptop, "pong")["type"] == "pong"                              # and nothing else was queued for the laptop
+        phone.send_json({"type": "call.end", "to": pid, "call_id": "m1"})
+        assert drain_until(pws, "call.end")["call_id"] == "m1"

@@ -34,7 +34,7 @@ DEFINITIONS = {
     "retention": "Share of people still active (a done or partial day) within a week of day 7, 30 and 90 after they started.",
     "persistence": "Share of plans older than 8 weeks that were kept up in at least 6 of the last 8 weeks.",
     "recovery": "Share of lapses (3 or more quiet days) that ended with the person returning, and the median days it took.",
-    "change": "Median percentage change in the target behaviour (steps, servings, sleep hours, minutes, cigarettes) against the person's own starting point.",
+    "change": "Median percentage change in the target behaviour (steps, servings, sleep hours, minutes) against the person's own starting point.",
     "biomarker": "Median change between a person's first and latest 14 days of readings. This is an association; it does not show the app caused it.",
     "outreach": "Share of messages after a gap that were followed by a check-in within 48 hours.",
     "equity": "The same outcomes for each group. A gap of 15 percentage points or more between groups is flagged for review.",

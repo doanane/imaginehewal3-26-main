@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum
+from sqlalchemy import JSON, Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -22,6 +22,7 @@ class Doctor(Base):
     email = Column(String, nullable=True)  
     hashed_password = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    working_hours = Column(JSON, nullable=True)       # {"days": [0..6, Monday is 0], "start": "08:00", "end": "17:00", "slot_min": 30}
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     patients = relationship("UserProfile", back_populates="assigned_doctor", cascade="all, delete-orphan")
