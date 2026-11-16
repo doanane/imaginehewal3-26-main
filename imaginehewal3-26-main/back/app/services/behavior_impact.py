@@ -24,11 +24,12 @@ from app.models.activity import SleepSession, WeightLog
 from app.models.behavior import BehaviorAction, BehaviorContext, BehaviorNudge, BehaviorPlan, BehaviorSettings
 from app.models.iot_device import VitalReading
 from app.models.user import UserProfile
+from app.services import audience
 from app.services import behavior_engine as eng
 
 MIN_CELL = 5
 EQUITY_GAP_FLAG = 0.15
-DIMENSIONS = ("gender", "age_band", "language", "mobility", "work_pattern", "support")
+DIMENSIONS = ("segment", "gender", "age_band", "language", "mobility", "work_pattern", "support", "region")
 
 DEFINITIONS = {
     "retention": "Share of people still active (a done or partial day) within a week of day 7, 30 and 90 after they started.",
@@ -154,7 +155,11 @@ def compute_impact(db: Session, today: Optional[date] = None, user_ids: Optional
     person: Dict[int, dict] = {}
     for p, status, o in per_plan.values():
         rate, nn = eng.adherence(status, today, 14, p.start_date)
-        rec = person.setdefault(p.user_id, {"adh": [], "pers": [], "chg": []})
+        rec = person.setdefault(p.user_id, {"adh": [], "pers": [], "chg": [], "lapses": 0, "recovered": 0, "days": []})
+        rec["lapses"] += o["lapses"]
+        rec["recovered"] += o["recovered_lapses"]
+        if o["avg_days_to_recover"] is not None:
+            rec["days"].append(o["avg_days_to_recover"])
         if nn >= 7:
             rec["adh"].append(rate)
         if o["weeks_tracked"]:
@@ -170,7 +175,10 @@ def compute_impact(db: Session, today: Optional[date] = None, user_ids: Optional
             pr, cx, st = prof.get(u), ctx.get(u), sets.get(u)
             key = {"gender": (pr.gender if pr and pr.gender else "not_provided"), "age_band": _band(pr.age if pr else None),
                    "language": (st.language if st else "en") or "en", "mobility": (cx.mobility if cx else "not_provided"),
-                   "work_pattern": (cx.work_pattern if cx else "not_provided"), "support": (cx.support if cx else "not_provided")}[dim]
+                   "work_pattern": (cx.work_pattern if cx else "not_provided"), "support": (cx.support if cx else "not_provided"),
+                   "region": (cx.region if cx and cx.region else "gh"),
+                   "segment": audience.resolve(cx.segment if cx else None, pr.age if pr else None, list(pr.chronic_conditions or []) if pr else [],
+                                               cx.work_pattern if cx else None) or "not_provided"}[dim]
             cells[key].append(rec)
         shown, visible = {}, []
         for key, recs in cells.items():
@@ -180,7 +188,12 @@ def compute_impact(db: Session, today: Optional[date] = None, user_ids: Optional
             adh = sum(sum(r["adh"]) / len(r["adh"]) for r in recs) / len(recs)
             per = sum(sum(r["pers"]) / len(r["pers"]) for r in recs if r["pers"]) / max(1, sum(1 for r in recs if r["pers"]))
             chg = [sum(r["chg"]) / len(r["chg"]) for r in recs if r["chg"]]
-            shown[key] = {"n": len(recs), "adherence": round(adh, 2), "persistence": round(per, 2), "median_change_pct": round(median(chg), 1) if chg else None}
+            lap, rec_n = sum(r["lapses"] for r in recs), sum(r["recovered"] for r in recs)
+            days = [d for r in recs for d in r["days"]]
+            recov = ({"lapses": lap, "recovered_share": round(rec_n / lap, 2), "median_days_to_return": round(median(days), 1) if days else None}
+                     if lap >= min_cell else {"lapses": f"<{min_cell}", "hidden": True})
+            shown[key] = {"n": len(recs), "adherence": round(adh, 2), "persistence": round(per, 2), "median_change_pct": round(median(chg), 1) if chg else None,
+                          "recovery": recov}
             visible.append(adh)
         gap = round(max(visible) - min(visible), 2) if len(visible) >= 2 else None
         equity[dim] = {"groups": shown, "gap": gap, "review": bool(gap is not None and gap >= EQUITY_GAP_FLAG)}

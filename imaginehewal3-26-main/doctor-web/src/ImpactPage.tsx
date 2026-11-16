@@ -16,6 +16,8 @@ function Metric({ icon, title, value, sub, i }: { icon: React.ReactNode; title: 
 }
 
 /** Did the people on this panel who chose to share actually change, and keep it? Group figures only, hidden under five people. */
+const GROUP: Record<string, string> = { chronic: 'Long-term condition', sedentary: 'Desk-based workers', young_adult: 'Adults under 40', adult: 'Adults 40 to 59', older_adult: 'Adults 60 and over', gh: 'Ghana', ae: 'UAE / Gulf', desk: 'Desk or seated job' };
+
 export default function ImpactPage() {
   const [d, setD] = useState<any | null>(null);
   const [err, setErr] = useState('');
@@ -63,7 +65,7 @@ export default function ImpactPage() {
               <div key={dim} className="eq">
                 <h3>{dim.replace(/_/g, ' ')} {v.review && <span className="pill warn">gap {Math.round(v.gap * 100)} points</span>}</h3>
                 <ul className="eq-row">{Object.entries(v.groups as Record<string, any>).map(([g, c]) => (
-                  <li key={g} className={c.hidden ? 'dim' : ''}><b>{g.replace(/_/g, ' ')}</b>{c.hidden ? <small>fewer than 5</small> : <small>{Math.round(c.adherence * 100)}% adherence, n = {c.n}</small>}</li>
+                  <li key={g} className={c.hidden ? 'dim' : ''}><b>{GROUP[g] || g.replace(/_/g, ' ')}</b>{c.hidden ? <small>fewer than 5</small> : <small>{Math.round(c.adherence * 100)}% adherence, n = {c.n}{c.recovery && !c.recovery.hidden ? `. ${Math.round(c.recovery.recovered_share * 100)}% came back after a lapse${c.recovery.median_days_to_return != null ? ` in ${c.recovery.median_days_to_return} days` : ''}` : ''}</small>}</li>
                 ))}</ul>
               </div>
             ))}

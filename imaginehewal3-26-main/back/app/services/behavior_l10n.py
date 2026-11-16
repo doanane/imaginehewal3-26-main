@@ -23,6 +23,9 @@ ACTIONS: Dict[str, Dict[Tuple[str, int], Tuple[str, str]]] = {
         ("activity", 0): ("Soyez actif {t} minutes aujourd'hui", "Tout mouvement compte : marche, exercices des bras et des jambes assis, étirements, danse ou tâches ménagères. De courtes périodes suffisent."),
         ("activity", 1): ("Bougez {t} minutes aujourd'hui, par courtes périodes", "Décidez quand : par exemple après chaque repas. Cinq minutes trois fois, ça compte."),
         ("activity", 2): ("Faites {t} minutes d'une activité que vous aimez et qui vous fait bouger", "De la musique, un exercice assis, une marche avec quelqu'un ou aider à la maison. Choisissez ce qui vous plaît."),
+        ("breaks", 0): ("Faites {t} pause(s) de mouvement aujourd'hui", "Levez-vous, étirez-vous ou marchez 2 à 3 minutes. Réglez une minuterie pour que l'heure ne passe pas."),
+        ("breaks", 1): ("Levez-vous et bougez {t} fois pendant votre journée de travail", "Associez-le à un geste habituel : après un appel, après un e-mail, ou quand vous remplissez votre bouteille d'eau."),
+        ("breaks", 2): ("Levez-vous {t} fois aujourd'hui, et invitez un collègue", "Une courte marche jusqu'au bureau d'un collègue ou dans l'escalier compte comme une pause."),
     },
     "ar": {
         ("movement", 0): ("امشِ {t} خطوة اليوم", "جرّب المشي 10 دقائق بعد الوجبة ثم زد تدريجيًا."),
@@ -35,6 +38,9 @@ ACTIONS: Dict[str, Dict[Tuple[str, int], Tuple[str, str]]] = {
         ("activity", 0): ("كن نشيطًا {t} دقيقة اليوم", "كل حركة تُحسب: المشي، أو تمارين الذراعين والساقين وأنت جالس، أو التمدد، أو الرقص، أو أعمال البيت. فترات قصيرة تكفي."),
         ("activity", 1): ("تحرّك {t} دقيقة اليوم على فترات قصيرة", "قرّر متى: مثلًا بعد كل وجبة. خمس دقائق ثلاث مرات تتراكم."),
         ("activity", 2): ("قم بشيء تحبه ويحرّكك لمدة {t} دقيقة", "موسيقى، أو تمرين جالسًا، أو مشي مع شخص، أو مساعدة في البيت. اختر ما يعجبك."),
+        ("breaks", 0): ("خذ {t} استراحة حركة اليوم", "قف أو تمدّد أو امشِ من دقيقتين إلى ثلاث. اضبط منبهًا حتى لا تمر الساعة دون حركة."),
+        ("breaks", 1): ("قم وتحرّك {t} مرة خلال يوم عملك", "اربطها بشيء تفعله أصلًا: بعد مكالمة، أو بعد إرسال بريد، أو عند ملء كوب الماء."),
+        ("breaks", 2): ("قم {t} مرة اليوم، وادعُ زميلًا ليرافقك", "مشي قصير إلى مكتب زميل أو على الدرج يُحتسب استراحة."),
     },
 }
 

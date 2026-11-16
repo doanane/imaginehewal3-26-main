@@ -56,7 +56,7 @@ def main():
         db.add(UserProfile(user_id=u.id, full_name=f"Demo Participant {k + 1}", age=34 + k * 3, gender="Female" if k % 2 else "Male",
                            chronic_conditions=["Hypertension"] if k % 3 else ["Type 2 diabetes"], profile_completed=True, doctor_id=DOCTOR))
         db.add(BehaviorSettings(user_id=u.id, language=LANGS[k % 4], share_with_doctor=True, wearable_data_enabled=True))
-        db.add(BehaviorContext(user_id=u.id, mobility=MOBILITY[k % 4], work_pattern=WORK[k % 4], support="family" if k % 2 else "alone", readiness=2 + k % 3))
+        db.add(BehaviorContext(user_id=u.id, mobility=MOBILITY[k % 4], work_pattern=WORK[k % 4], support="family" if k % 2 else "alone", readiness=2 + k % 3, segment="sedentary" if k % 2 == 0 else "adult"))   # two audiences of six so each clears the minimum-group rule
         behavior = "activity" if MOBILITY[k % 4] != "full" else "movement"
         plan = BehaviorPlan(user_id=u.id, behavior=behavior, goal_text="Demo", baseline_value=10 if behavior == "activity" else 3000,
                             goal_value=30 if behavior == "activity" else 8000, unit="active minutes" if behavior == "activity" else "steps", level=3, start_date=start, active=True)

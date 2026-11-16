@@ -70,7 +70,10 @@ class BehaviorContext(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True)
     preferred_time = Column(String, default="any")           # morning | midday | evening | any
-    work_pattern = Column(String, default="regular")         # regular | shift | irregular | not_working
+    work_pattern = Column(String, default="regular")         # regular | desk | shift | irregular | not_working
+    segment = Column(String, nullable=True)                  # chronic | sedentary | young_adult | adult | older_adult (empty: suggested from profile)
+    region = Column(String, default="gh")                    # gh | ae: the week, Ramadan, prayer and heat rules, emergency numbers
+    respect_prayer = Column(Boolean, default=True)           # UAE region: no messages at prayer time or in fasting hours during Ramadan
     mobility = Column(String, default="full")                # full | limited | wheelchair
     support = Column(String, default="alone")                # alone | family | friend | workplace
     readiness = Column(Integer, default=3)                   # 1 thinking about it ... 5 already doing it

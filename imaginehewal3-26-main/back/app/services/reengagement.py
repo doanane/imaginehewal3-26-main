@@ -26,7 +26,10 @@ from sqlalchemy.orm import Session
 from app.models.behavior import BehaviorAction, BehaviorNudge, BehaviorPlan, BehaviorSettings, BehaviorShare
 from app.models.notification import Notification
 from app.models.user import User
+from app.services import audience as aud
+from app.services import behavior_data as bdata
 from app.services import behavior_engine as eng
+from app.services import gulf
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +83,8 @@ def channel_record(nudges: List[BehaviorNudge]) -> Dict[str, Dict[str, float]]:
 
 
 def decide(*, settings, missed_days: int, lapse_start: date, recent: List[BehaviorNudge], now: datetime,
-           has_supporter: bool, usual_hour: Optional[int]) -> dict:
+           has_supporter: bool, usual_hour: Optional[int], segment: Optional[str] = None, region: Optional[str] = None,
+           respect_prayer: bool = True) -> dict:
     """Pure decision: send or not, which kind, which channel, and the plain reason. Fully unit-tested."""
     def skip(why: str) -> dict:
         return {"send": False, "reason": why}
@@ -90,10 +94,15 @@ def decide(*, settings, missed_days: int, lapse_start: date, recent: List[Behavi
         return skip("no gap")
     if not settings.notifications_enabled or (settings.reengage_channel or "push") == "none" or settings.max_nudges_per_week == 0:
         return skip("the person turned outreach off")
-    if in_quiet(now.hour, settings.quiet_hours_start, settings.quiet_hours_end):
+    local = gulf.local_now(now, region) if region else now           # the person's own clock, not the server's
+    if in_quiet(local.hour, settings.quiet_hours_start, settings.quiet_hours_end):
         return skip("quiet hours")
-    if not in_send_window(now.hour, usual_hour):
+    first, last = aud.send_window(segment, region, local.weekday(), usual_hour)
+    if not (first <= local.hour <= last):
         return skip("outside the person's usual hours")
+    why_not = gulf.nudge_gate(now, region, respect_prayer)
+    if why_not:
+        return skip(why_not)
     same_gap = [n for n in recent if n.lapse_start == lapse_start]
     if any(n.kind == kind for n in same_gap):
         return skip("already sent for this gap")
@@ -173,7 +182,10 @@ def run(db: Session, now: Optional[datetime] = None) -> List[dict]:
             continue
         lapse_start = now.date() - timedelta(days=gap["missed"])
         recent = db.query(BehaviorNudge).filter(BehaviorNudge.user_id == plan.user_id, BehaviorNudge.sent_at >= now - timedelta(days=30)).all()
+        cx = bdata.context_for(db, plan.user_id)
         decision = decide(settings=s, missed_days=gap["missed"], lapse_start=lapse_start, recent=recent, now=now,
+                          segment=bdata.resolved_segment(cx, bdata.health_context(db, user)), region=cx.get("region"),
+                          respect_prayer=bool(cx.get("respect_prayer", True)),
                           has_supporter=db.query(BehaviorShare).filter_by(owner_id=plan.user_id, active=True).first() is not None,
                           usual_hour=best_hour(db, plan.user_id, now))
         if not decision["send"]:

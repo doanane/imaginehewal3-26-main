@@ -28,6 +28,9 @@ BEHAVIORS: Dict[str, dict] = {
                  "default_baseline": 10, "default_goal": 30},
 }
 
+# A "movement break": standing, stretching or walking for 2 to 3 minutes. Counted per working day, for people who sit most of it.
+BEHAVIORS["breaks"] = {"unit": "movement breaks", "direction": "up", "step": 1, "default_baseline": 1, "default_goal": 8}
+
 BARRIERS = ["time", "tired", "forgot", "motivation", "weather", "access",
             "pain_sick", "stress", "craving", "other"]
 
@@ -169,6 +172,15 @@ MESSAGES = {
 for _code in ("tw", "ee", "ha", "gaa"):
     MESSAGES.setdefault(_code, {})
 
+BASE_ACTIONS["breaks"] = [
+    ("Take {t} movement break(s) today",
+     "Stand up, stretch or walk for 2 to 3 minutes. Set a timer so the hour does not slip by.", "Implementation intention"),
+    ("Stand up and move {t} time(s) during your working day",
+     "Tie it to something you already do: after a call, after sending an email, or when you refill your water.", "Habit stacking"),
+    ("Get up {t} time(s) today, and ask a colleague to join you",
+     "A short walk to a colleague's desk or the stairs counts as a break.", "Social support"),
+]
+
 
 def msg(key: str, lang: str = "en") -> str:
     return MESSAGES.get(lang, MESSAGES["en"]).get(key, MESSAGES["en"][key])
@@ -180,9 +192,10 @@ def _round_to(value: float, step: float) -> float:
 
 
 def target_for(behavior: str, baseline: float, goal: float, level: int,
-               comeback: bool = False) -> float:
+               comeback: bool = False, grow: float = 1.0) -> float:
+    """`grow` is the audience's pace: below 1 the step grows more slowly (older adults), above 1 a little faster (young adults)."""
     cfg = BEHAVIORS[behavior]
-    frac = COMEBACK_FRACTION if comeback else LEVEL_FRACTION[max(1, min(5, level))]
+    frac = COMEBACK_FRACTION if comeback else min(1.0, LEVEL_FRACTION[max(1, min(5, level))] * grow)
     if cfg["direction"] == "up":
         raw = baseline + (goal - baseline) * frac
         t = max(_round_to(raw, cfg["step"]), baseline + cfg["step"])  # always a step up
@@ -195,10 +208,10 @@ def target_for(behavior: str, baseline: float, goal: float, level: int,
 def build_action(behavior: str, baseline: float, goal: float, level: int,
                  day: date, comeback: bool = False,
                  top_barrier: Optional[str] = None, option_index: Optional[int] = None,
-                 note: str = "", lang: str = "en") -> dict:
+                 note: str = "", lang: str = "en", grow: float = 1.0) -> dict:
     """Return title/detail/technique/rationale/target for one day's action.
     `option_index` lets the learning engine choose the style; `note` explains that choice to the user."""
-    target = target_for(behavior, baseline, goal, level, comeback)
+    target = target_for(behavior, baseline, goal, level, comeback, grow)
     options = BASE_ACTIONS[behavior]
     idx = option_index if option_index is not None and 0 <= option_index < len(options) else day.toordinal() % len(options)
     title_t, detail, technique = options[idx]
@@ -426,7 +439,7 @@ def safety_note(behavior: str, health: Optional[dict], lang: str = "en") -> dict
     health = health or {}
     S = lambda k: l10n.pick(l10n.SAFETY, lang, k) or l10n.SAFETY["en"][k]          # noqa: E731
     conditions = [str(c).lower() for c in (health.get("conditions") or [])]
-    if behavior in ("movement", "activity"):
+    if behavior in ("movement", "activity", "breaks"):
         if health.get("bp_crisis") or health.get("sos_active"):
             return {"hold_level": True, "reason": "safety", "note": S("bp")}
         if any(k in conditions for k in ("heart", "cardiac", "heart failure", "angina")):
@@ -462,6 +475,9 @@ def recommend_behaviors(ctx: Optional[dict], profile: Optional[dict], sleep_hour
         out.append({"behavior": "sleep", "reason": f"You slept about {sleep_hours:g} hours last night, and short sleep makes every other change harder."})
     if any(k in conditions for k in ("diabetes", "type 2 diabetes", "hypertension", "obesity")):
         out.append({"behavior": "nutrition", "reason": "More vegetables and fruit in meals you already eat supports blood pressure and weight."})
+    seg = ctx.get("segment_resolved")
+    if seg == "sedentary":
+        out.insert(0, {"behavior": "breaks", "reason": "Sitting for long stretches is a risk on its own. Short movement breaks during the working day are the easiest change."})
     if not out:
         out.append({"behavior": move, "reason": "Moving a little more each day is the most useful place to start for most people."})
     seen, final = set(), []
@@ -470,4 +486,5 @@ def recommend_behaviors(ctx: Optional[dict], profile: Optional[dict], sleep_hour
             continue
         seen.add(o["behavior"])
         final.append(o)
-    return final[:3]
+    from app.services import audience
+    return audience.order_first(seg, final)[:3]

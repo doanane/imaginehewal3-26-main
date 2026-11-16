@@ -46,9 +46,13 @@ def _get(db: Session, user: User, event_id: int) -> SosEvent:
 
 
 @router.get("/config")
-def config(user: User = Depends(get_current_active_user)):
+def config(db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     c = svc.cfg()
-    return {"emergency_number": c["number"], "dispatch_mode": c["mode"], "simulation": c["mode"] != "live",
+    from app.services import behavior_data as bdata, gulf
+    region = bdata.context_for(db, user.id).get("region")
+    nums = gulf.emergency_numbers(region)
+    number = c["number"] if os.getenv("EMERGENCY_NUMBER") else nums.get("all") or nums.get("ambulance") or c["number"]     # an operator's explicit setting always wins
+    return {"emergency_number": number, "numbers": nums, "region": region or "gh", "dispatch_mode": c["mode"], "simulation": c["mode"] != "live",
             "grace_seconds": c["grace_auto"], "ack_wait_seconds": c["ack_wait"], "max_attempts": svc.MAX_ATTEMPTS}
 
 

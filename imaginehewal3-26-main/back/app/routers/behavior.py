@@ -20,6 +20,8 @@ from app.models.user import User, UserProfile
 from app.services import behavior_engine as eng
 from app.services import learning_service as learning
 from app.services import behavior_data as bdata
+from app.services import audience as aud
+from app.services import gulf
 from app.services import reengagement
 
 router = APIRouter(prefix="/behavior", tags=["behavior"])
@@ -67,6 +69,9 @@ class ContextUpdate(BaseModel):
     literacy: Optional[str] = None
     readiness: Optional[int] = Field(None, ge=1, le=5)
     motivation_text: Optional[str] = Field(None, max_length=200)
+    segment: Optional[str] = None
+    region: Optional[str] = None
+    respect_prayer: Optional[bool] = None
 
 
 # ---------- helpers ----------
@@ -150,6 +155,10 @@ def _generate_action(db: Session, plan: BehaviorPlan, today: date,
         if lighter:
             note = (note + " " if note else "") + "Today is usually harder for you, so we made the step a little lighter."
     used_level = max(1, plan.level - 1) if lighter else plan.level
+    seg = bdata.resolved_segment(ctx, health)
+    region = ctx.get("region") or "gh"
+    if idx is None and not (comeback or top_barrier) and aud.preferred_style(seg):      # no personal history yet: start with the style that suits this audience
+        idx = next((i for i, o in enumerate(eng.BASE_ACTIONS[plan.behavior]) if o[2] == aud.preferred_style(seg)), None)
     from app.services import behavior_l10n as L
     P = lambda k: L.pick(L.FITTED_PARTS, lang, k) or L.FITTED_PARTS["en"][k]          # noqa: E731
     fitted = []
@@ -167,8 +176,12 @@ def _generate_action(db: Session, plan: BehaviorPlan, today: date,
     if fitted:
         note = (note + " " if note else "") + L.FITTED.get(lang, L.FITTED["en"]) + " " + "; ".join(fitted) + "."
     built = eng.build_action(plan.behavior, plan.baseline_value, plan.goal_value,
-                             used_level, today, comeback, top_barrier, option_index=idx, note=note, lang=lang)
+                             used_level, today, comeback, top_barrier, option_index=idx, note=note, lang=lang,
+                             grow=aud.grow_factor(seg) if not safety["hold_level"] else 1.0)
     built = eng.adapt_for_context(built, plan.behavior, ctx, lang)
+    extra = aud.notes_for(seg, plan.behavior, region, today, lang)
+    if extra and not comeback:
+        built["detail"] = f"{built['detail']} {' '.join(extra)}"
     action = BehaviorAction(
         plan_id=plan.id, user_id=plan.user_id, action_date=today,
         title=built["title"], detail=built["detail"], technique=built["technique"],
@@ -267,13 +280,21 @@ def export_my_behavior_data(db: Session = Depends(get_db), user: User = Depends(
 # ---------- circumstances (what makes the plan fit this person's life) ----------
 @router.get("/context")
 def get_context(db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
-    return {**bdata.context_for(db, user.id), "choices": {**bdata.CONTEXT_CHOICES, "readiness": [1, 2, 3, 4, 5]},
+    cx = bdata.context_for(db, user.id)
+    h = bdata.health_context(db, user)
+    return {**cx, "segment_suggested": aud.suggest(h.get("age"), h.get("conditions"), cx.get("work_pattern")),
+            "segment_resolved": bdata.resolved_segment(cx, h),
+            "today": gulf.context(datetime.now(timezone.utc), cx.get("region")),
+            "choices": {**bdata.CONTEXT_CHOICES, "readiness": [1, 2, 3, 4, 5]},
             "why": "These answers only change the wording and timing of your steps, and how quickly they grow. They are never shared, and you can change or erase them any time."}
 
 
 @router.put("/context")
 def update_context(body: ContextUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     data = body.model_dump(exclude_none=True)
+    clear_segment = data.get("segment") == ""                     # "" returns to the suggested audience
+    if clear_segment:
+        data.pop("segment")
     for k, allowed in bdata.CONTEXT_CHOICES.items():
         if k in data and data[k] not in allowed:
             raise HTTPException(400, f"{k} must be one of {list(allowed)}")
@@ -283,6 +304,8 @@ def update_context(body: ContextUpdate, db: Session = Depends(get_db), user: Use
         db.add(row)
     for k, v in data.items():
         setattr(row, k, v.strip() if isinstance(v, str) else v)
+    if clear_segment:
+        row.segment = None
     db.commit()
     return get_context(db, user)
 
@@ -294,10 +317,13 @@ def recommendations(db: Session = Depends(get_db), user: User = Depends(get_curr
     s = _settings(db, user)
     active = [p.behavior for p in db.query(BehaviorPlan).filter_by(user_id=user.id, active=True).all()]
     sleep = health.get("sleep_hours") if s.wearable_data_enabled else None
-    recs = eng.recommend_behaviors(bdata.context_for(db, user.id), {"conditions": health["conditions"], "habits": health["habits"]}, sleep, active)
+    cx = bdata.context_for(db, user.id)
+    cx["segment_resolved"] = bdata.resolved_segment(cx, health)
+    recs = eng.recommend_behaviors(cx, {"conditions": health["conditions"], "habits": health["habits"]}, sleep, active)
     for rec in recs:
         cfg = eng.BEHAVIORS[rec["behavior"]]
-        rec.update({"unit": cfg["unit"], "baseline_value": cfg["default_baseline"], "goal_value": cfg["default_goal"]})
+        b0, g0 = aud.goals_for(cx["segment_resolved"], rec["behavior"], cfg["default_baseline"], cfg["default_goal"])
+        rec.update({"unit": cfg["unit"], "baseline_value": b0, "goal_value": g0})
     return {"recommendations": recs, "based_on": "your profile, circumstances and, only if you allowed it, your sleep from Apple Health"}
 
 
@@ -379,8 +405,10 @@ def create_plan(body: PlanCreate, db: Session = Depends(get_db),
     cfg = eng.BEHAVIORS.get(body.behavior)
     if not cfg:
         raise HTTPException(400, f"behavior must be one of {list(eng.BEHAVIORS)}")
-    baseline = body.baseline_value if body.baseline_value is not None else cfg["default_baseline"]
-    goal = body.goal_value if body.goal_value is not None else cfg["default_goal"]
+    cx = bdata.context_for(db, user.id)
+    d_base, d_goal = aud.goals_for(bdata.resolved_segment(cx, bdata.health_context(db, user)), body.behavior, cfg["default_baseline"], cfg["default_goal"])
+    baseline = body.baseline_value if body.baseline_value is not None else d_base
+    goal = body.goal_value if body.goal_value is not None else d_goal
     if cfg["direction"] == "up" and goal <= baseline:
         raise HTTPException(400, "goal_value must be higher than baseline_value for this behaviour")
     if cfg["direction"] == "down" and goal >= baseline:

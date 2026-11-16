@@ -36,7 +36,7 @@ CHEERS = {
     "keep_going": {"en": "{name} says: keep going, every step counts.", "ar": "{name} يقول: واصل، كل خطوة تُحسب.", "fr": "{name} dit : continuez, chaque pas compte."},
     "thinking_of_you": {"en": "{name} is thinking of you.", "ar": "{name} يفكر بك.", "fr": "{name} pense à vous."},
 }
-BEHAVIOR_LABEL = {"movement": "Moving more", "activity": "Being active", "nutrition": "Eating more vegetables and fruit", "sleep": "Sleeping better"}
+BEHAVIOR_LABEL = {"movement": "Moving more", "activity": "Being active", "breaks": "Taking movement breaks", "nutrition": "Eating more vegetables and fruit", "sleep": "Sleeping better"}
 
 
 # ------------------------------------------------------------------ helpers

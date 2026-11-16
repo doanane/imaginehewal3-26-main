@@ -160,6 +160,7 @@ def _ensure_columns():
               "community_posts": [("group_key", "VARCHAR"), ("image_urls", "JSON")],
               "community_reviews": [("updated_at", "TIMESTAMP")],
               "health_data": [("active_minutes", "INTEGER"), ("distance_m", "INTEGER"), ("steps_source", "VARCHAR")],
+              "behavior_contexts": [("segment", "VARCHAR"), ("region", "VARCHAR DEFAULT 'gh'"), ("respect_prayer", "BOOLEAN DEFAULT TRUE")],
               "behavior_settings": [("reengage_channel", "VARCHAR DEFAULT 'push'"), ("max_nudges_per_week", "INTEGER DEFAULT 2"),
                                     ("share_with_doctor", "BOOLEAN DEFAULT FALSE")]}
     insp = inspect(engine)

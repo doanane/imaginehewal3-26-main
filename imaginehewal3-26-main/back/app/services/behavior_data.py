@@ -18,10 +18,13 @@ from app.models.user import User, UserProfile
 from app.services.emergency_service import OPEN
 
 CONTEXT_DEFAULTS = {"preferred_time": "any", "work_pattern": "regular", "mobility": "full", "support": "alone",
-                    "readiness": 3, "literacy": "standard", "motivation_text": None}
+                    "readiness": 3, "literacy": "standard", "motivation_text": None,
+                    "segment": None, "region": "gh", "respect_prayer": True}
 CONTEXT_CHOICES = {
     "preferred_time": ("morning", "midday", "evening", "any"),
-    "work_pattern": ("regular", "shift", "irregular", "not_working"),
+    "work_pattern": ("regular", "desk", "shift", "irregular", "not_working"),
+    "segment": ("chronic", "sedentary", "young_adult", "adult", "older_adult"),
+    "region": ("gh", "ae"),
     "mobility": ("full", "limited", "wheelchair"),
     "support": ("alone", "family", "friend", "workplace"),
     "literacy": ("standard", "simple"),
@@ -33,6 +36,11 @@ def context_for(db: Session, user_id: int) -> dict:
     if not row:
         return dict(CONTEXT_DEFAULTS)
     return {k: (getattr(row, k) if getattr(row, k) is not None else CONTEXT_DEFAULTS[k]) for k in CONTEXT_DEFAULTS}
+
+
+def resolved_segment(ctx: dict, health: dict) -> Optional[str]:
+    from app.services import audience
+    return audience.resolve(ctx.get("segment"), health.get("age"), health.get("conditions"), ctx.get("work_pattern"))
 
 
 def _aware(d: datetime) -> datetime:
