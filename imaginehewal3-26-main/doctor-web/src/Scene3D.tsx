@@ -37,7 +37,7 @@ export default function Scene3D() {
     const curve = new THREE.CatmullRomCurve3(ecgPoints());
     const tube = new THREE.Mesh(
       new THREE.TubeGeometry(curve, 600, 0.045, 10, false),
-      new THREE.MeshStandardMaterial({ color: 0xf5f5f5, emissive: 0x2a2a2a, emissiveIntensity: 0.5, roughness: 0.35, metalness: 0.2 }),
+      new THREE.MeshStandardMaterial({ color: 0xff3b5c, emissive: 0x7a0016, emissiveIntensity: 0.9, roughness: 0.35, metalness: 0.2 }),
     );
     const group = new THREE.Group();
     group.add(tube);
