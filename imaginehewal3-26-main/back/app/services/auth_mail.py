@@ -20,8 +20,9 @@ from app.models.auth import EmailVerificationToken, PasswordResetToken
 from app.models.user import User
 from app.services import simple_limiter
 
-VERIFY_TTL = timedelta(hours=24)
-RESET_TTL = timedelta(hours=1)
+CODE_MINUTES = 10                                       # every emailed code and link: verification, password reset and sign-in
+VERIFY_TTL = timedelta(minutes=CODE_MINUTES)
+RESET_TTL = timedelta(minutes=CODE_MINUTES)
 MAX_WRONG_CODES = 5
 WRONG_CODE_WINDOW = 900
 TOO_MANY = "Too many requests. Please wait a little and try again."
@@ -84,8 +85,10 @@ def destroy_pending(db: Session, purpose: str, email: str) -> None:
 
 # ---- verification
 def issue_verification(db: Session, user: User) -> Tuple[str, str]:
-    """A new link token and code for this user (older ones are cancelled). Returns the RAW values to email."""
-    db.query(EmailVerificationToken).filter(EmailVerificationToken.user_id == user.id).delete()
+    """A new link token and code for this user. Returns the RAW values to email.
+    An earlier email stays valid until its own 10 minutes are over, so asking again never breaks the email you already have.
+    Expired ones are cleared here, and the request limit (3 an hour) keeps the number of live codes small."""
+    db.query(EmailVerificationToken).filter(EmailVerificationToken.user_id == user.id, EmailVerificationToken.expires_at <= datetime.utcnow()).delete()
     raw, code = secrets.token_urlsafe(32), new_code()
     until = datetime.utcnow() + VERIFY_TTL
     db.add(EmailVerificationToken(user_id=user.id, token=h(raw), expires_at=until))
@@ -112,7 +115,7 @@ def mark_verified(db: Session, user: User) -> None:
 # ---- password reset
 def issue_reset(db: Session, email: str) -> Tuple[str, str]:
     email = norm(email)
-    db.query(PasswordResetToken).filter(func.lower(PasswordResetToken.email) == email).delete(synchronize_session=False)
+    db.query(PasswordResetToken).filter(func.lower(PasswordResetToken.email) == email, PasswordResetToken.expires_at <= datetime.utcnow()).delete(synchronize_session=False)
     raw, code = secrets.token_urlsafe(32), new_code()
     until = datetime.utcnow() + RESET_TTL
     db.add(PasswordResetToken(email=email, token=h(raw), expires_at=until, is_used=False))

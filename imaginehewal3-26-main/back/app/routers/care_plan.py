@@ -108,11 +108,8 @@ def _note(n: DoctorNote) -> dict:
 
 
 def _name(db: Session, user_id: int) -> str:
-    p = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-    if p and p.full_name:
-        return p.full_name
-    u = db.query(User).filter(User.id == user_id).first()
-    return (f"{u.first_name or ''} {u.last_name or ''}".strip() if u else "") or "Patient"
+    from app.services.names import lookup
+    return lookup(db, user_id)
 
 
 def _tell_patient(db: Session, doctor: Doctor, patient_id: int, event: dict, title: str, text: str, kind: str) -> None:

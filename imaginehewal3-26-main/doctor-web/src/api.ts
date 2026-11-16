@@ -20,7 +20,7 @@ async function call<T>(path: string, opts: { method?: string; body?: unknown } =
   if (s) headers.Authorization = `Bearer ${s.token}`;
   let r: Response;
   try {
-    r = await fetch(path.startsWith('/rtc') || path.startsWith('/auth/') ? path : `/doctor-portal${path}`, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    r = await fetch(path.startsWith('/rtc') || path.startsWith('/auth/') || path.startsWith('/agent/story') ? path : `/doctor-portal${path}`, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
   } catch {
     throw new Error('Cannot reach the server. Check the connection.');
   }
@@ -131,3 +131,16 @@ export async function verifyDocument(ref: string): Promise<DocCheck> {
   if (r.status === 429) throw new Error('Too many checks. Please wait a minute.');
   return r.json();
 }
+
+// ---- care agent
+export const agentStory = (scenario: 'lapse' | 'safety') => call<any>(`/agent/story?scenario=${scenario}`);
+export const agentQueue = () => call<{ pending: any[]; reviewed: any[] }>('/agent/queue');
+export const getPatientAgent = (id: number) => call<any>(`/patients/${id}/agent`);
+export const agentReview = (id: number, decision: 'approve' | 'override' | 'dismiss', note: string, message: string) =>
+  call<{ ok: boolean; review_status: string }>(`/agent/runs/${id}/review`, { method: 'POST', body: { decision, note: note || null, message: message || null } });
+
+// ---- ask a patient to link
+export const findPatient = (q: string) => call<any>(`/find?q=${encodeURIComponent(q)}`);
+export const sendLinkRequest = (patient_user_id: number, message: string) => call<{ id: number; status: string }>('/link-requests', { method: 'POST', body: { patient_user_id, message: message || null } });
+export const getLinkRequests = () => call<{ requests: any[] }>('/link-requests');
+export const withdrawLinkRequest = (id: number) => call<{ ok: boolean }>(`/link-requests/${id}`, { method: 'DELETE' });

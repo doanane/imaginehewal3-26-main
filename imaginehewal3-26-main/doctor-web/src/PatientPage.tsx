@@ -1,26 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Activity, AlertCircle, AlertTriangle, ArrowLeft, ClipboardList, HeartHandshake, Footprints, Info, MapPin, OctagonAlert, Pill, ScrollText, Send, Sparkles, Stethoscope, UtensilsCrossed } from 'lucide-react';
+import { Bot, Activity, AlertCircle, AlertTriangle, ArrowLeft, ClipboardList, HeartHandshake, Footprints, Info, MapPin, OctagonAlert, Pill, ScrollText, Send, Sparkles, Stethoscope, UtensilsCrossed } from 'lucide-react';
 import { getAnalytics, getBrief, getFhir, getPatient } from './api';
 import ChatPanel from './Chat';
 import ConsultButton from './ConsultButton';
 import { ClinicDoc, Consultation, getPatientConsultations, getPatientDocuments } from './api';
 import CarePlan from './CarePlan';
 import HabitsTab from './HabitsTab';
+import { PatientLoop } from './AgentPage';
 import { AdherenceGrid, Bars, Gauge, TrendChart } from './Charts';
 import type { Analytics, Brief, Detail, Finding, MetricBlock, Overview } from './types';
 import { Badge, CountUp, Empty, Segmented, Skeleton, Tilt } from './ui';
 import { ago, bpText, initials, NA, safeMap, shortDay, show, signed, SOS_LABEL, usePolling, when } from './util';
 
-type Tab = 'summary' | 'trends' | 'medication' | 'careplan' | 'visits' | 'habits' | 'records';
+type Tab = 'summary' | 'trends' | 'medication' | 'careplan' | 'visits' | 'habits' | 'agent' | 'records';
 const TABS: { v: Tab; label: string; icon: React.ElementType }[] = [
   { v: 'summary', label: 'Summary', icon: Activity }, { v: 'trends', label: 'Trends', icon: ScrollText },
-  { v: 'medication', label: 'Medication', icon: Pill }, { v: 'careplan', label: 'Care plan', icon: ClipboardList }, { v: 'visits', label: 'Visits', icon: Stethoscope }, { v: 'habits', label: 'Habits', icon: HeartHandshake }, { v: 'records', label: 'Records', icon: UtensilsCrossed },
+  { v: 'medication', label: 'Medication', icon: Pill }, { v: 'careplan', label: 'Care plan', icon: ClipboardList }, { v: 'visits', label: 'Visits', icon: Stethoscope }, { v: 'habits', label: 'Habits', icon: HeartHandshake }, { v: 'agent', label: 'Care agent', icon: Bot }, { v: 'records', label: 'Records', icon: UtensilsCrossed },
 ];
 const LEVEL: Record<Finding['level'], { icon: React.ElementType; label: string }> = {
   critical: { icon: OctagonAlert, label: 'Critical' }, high: { icon: AlertTriangle, label: 'High' }, moderate: { icon: AlertCircle, label: 'Moderate' }, info: { icon: Info, label: 'Note' },
 };
-const COLORS: Record<string, string> = { heart_rate: 'var(--c-brand)', systolic: 'var(--c-amber)', diastolic: 'var(--c-green)', blood_oxygen: 'var(--c-blue)', glucose: 'var(--c-violet)' };
+const COLORS: Record<string, string> = { heart_rate: 'var(--c-ink)', systolic: 'var(--c-ink)', diastolic: 'var(--c-mute)', blood_oxygen: 'var(--c-ink2)', glucose: 'var(--c-mute)' };
 const BP_ORDER = [['normal', 'Normal'], ['elevated', 'Elevated'], ['stage1', 'Stage 1'], ['stage2', 'Stage 2'], ['crisis', 'Crisis']] as const;
 
 export default function PatientPage({ id, overview }: { id: number; overview: Overview | null }) {
@@ -70,6 +71,7 @@ export default function PatientPage({ id, overview }: { id: number; overview: Ov
           {tab === 'medication' && <Medication a={a} d={d} />}
           {tab === 'careplan' && <CarePlan id={id} name={p.name} />}
           {tab === 'habits' && <HabitsTab id={id} />}
+          {tab === 'agent' && <PatientLoop id={id} />}
           {tab === 'visits' && <VisitsTab id={id} />}
           {tab === 'records' && <Records d={d} />}
         </motion.div>
@@ -119,7 +121,7 @@ function Summary({ id, a, err, d, v, adherence }: { id: number; a: Analytics | n
         <div className="stack">
           {d && d.emergencies.length > 0 && <Emergencies d={d} />}
           <Brief id={id} />
-          <ChatPanel patientId={id} name={d?.patient.name || 'Patient'} />
+          <ChatPanel patientId={id} name={d?.patient.name || ''} />
         </div>
       </div>
     </>

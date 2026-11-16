@@ -54,6 +54,32 @@ Target and plan: `PILOT_AND_COMMERCIAL.md`. Interoperability: HL7 FHIR R4 export
 
 ---
 
+## The care agent: the story in four beats
+
+**One sentence.** For people who sit all day and drift away from a healthy routine, our agent notices the gap in a few days, sends one message that fits their day and prayer times, and shrinks the next step so they come back, with a clinician looking only where it matters.
+
+| Beat | In the product |
+|---|---|
+| 1. Problem | People go quiet after a week or two. Generic reminders are swiped away and nobody on the care team sees the drift. |
+| 2. Person | Khalid, 47, an office worker in Abu Dhabi. He feels fine. His movement breaks stopped on Friday. (A simulated person, labelled "(demo)".) |
+| 3. Solution | On the fourth quiet day the agent notices, picks a time that is not prayer time and is inside his working hours, sends one kind line, and shrinks the next step. |
+| 4. Outcome | Measured by the product: share of lapsed people who check in again within 48 hours, days to return, retention at day 7, 30 and 90, and the same results by audience, gender, age band, language and region. |
+
+**Watch it:** the doctor site page `#/story` needs no sign-in. It replays the same moment with and without the agent, then the safety case. Everything on it is produced by the same rules the live service runs, on simulated facts.
+
+**Why an agent and not a chatbot.** A chatbot waits to be asked. This agent runs by itself and shows its loop: it *senses* (check-ins, readings, the person's clock, Ramadan and prayer times), *decides* (written rules), *acts* (one fitted message, a smaller step, one-tap answers), *hands off* (a clinician is asked only for a very high reading, or a long silence in someone with a condition) and *measures* (did a check-in follow within 48 hours). Every pass keeps a trace that the person can read in the app under Habits, Today, "Your care agent".
+
+## Six questions, answered
+
+| Question | Answer |
+|---|---|
+| Who exactly is this for? | People who start a routine and drift: desk-based workers, adults under 40, 40 to 59, 60 and over, and people with long-term conditions. One person, one moment: Khalid on his fourth quiet day. |
+| Why an agent, not a chatbot? | It acts without being asked and shows what it senses, decides and does (`/agent/loop`, the Care agent page). |
+| Does it run end to end? | Yes, live: phone app, doctor site and API; guest sandbox with a seeded lapse and a hand-off waiting in the doctor's queue. |
+| What happens when it is wrong? | One tap stops messages or makes the step smaller; "not helpful" makes outreach quieter; a clinician can approve, change or dismiss any hand-off; the agent never changes a medicine or treatment; a very high reading holds the step and points to a clinician. |
+| What would it take to deploy? | Data: the person's own check-ins and readings. Integration: HL7 FHIR R4 export today; clinic record import next. Who operates it: a clinician reviews the hand-off queue. Hosting in a UAE region for a UAE partner. |
+| What happens after you submit? | A 12-week pilot with one partner, using the measures above (see `PILOT_AND_COMMERCIAL.md`). The partner and an ethics board approve it first. |
+
 ## Update: how each judging criterion is covered
 
 | Criterion | What we built (all real, with tests) |

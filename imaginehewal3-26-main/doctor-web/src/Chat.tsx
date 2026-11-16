@@ -97,7 +97,7 @@ export default function ChatPanel({ patientId, name }: { patientId: number; name
   return (
     <section className="card chat">
       <div className="card-head">
-        <h2><MessageSquare size={18} />Chat with {name.split(' ')[0]}</h2>
+        <h2><MessageSquare size={18} />{name ? `Chat with ${name.split(" ")[0]}` : "Chat"}</h2>
         <div className="chat-tools"><span className={`presence ${online ? 'on' : ''}`}>{online ? 'Online' : 'Offline'}</span>{callBtn('audio')}{callBtn('video')}</div>
       </div>
       <div className="chat-log" role="log" aria-live="polite" aria-label="Messages">

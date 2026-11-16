@@ -399,3 +399,25 @@ def test_the_whole_signup_flow_works_over_smtp(client, monkeypatch, smtp):
     simple_limiter.reset()
     u = _signup(client)
     assert len(smtp.sent) == 1 and re.search(r"Your code: \d{6}", smtp.sent[0].get_body(("plain",)).get_content())
+
+
+# ------------------------------------------------------------------ every code lives 10 minutes, even after asking again
+def test_asking_for_a_new_code_does_not_break_the_email_you_already_have(client, sg):
+    u = _signup(client)
+    sg.calls.clear()
+    client.post("/auth/login/otp/request", json={"email": u["email"]})
+    first = re.search(r"sign-in code: (\d{6})", sg.to(u["email"])[-1]["content"][0]["value"]).group(1)
+    client.post("/auth/login/otp/request", json={"email": u["email"]})                           # the person pressed "send a new code"
+    second = re.search(r"sign-in code: (\d{6})", sg.to(u["email"])[-1]["content"][0]["value"]).group(1)
+    assert "10 minutes" in sg.to(u["email"])[-1]["content"][0]["value"]
+    assert client.post("/auth/login/otp/verify", json={"email": u["email"], "otp": first}).status_code == 200      # the first email still works
+
+
+def test_every_code_and_link_says_and_means_ten_minutes():
+    from app.services import auth_mail
+    from datetime import timedelta
+    assert auth_mail.VERIFY_TTL == auth_mail.RESET_TTL == timedelta(minutes=10)
+    from app.services.email_service import EmailService
+    import inspect
+    src = inspect.getsource(EmailService)
+    assert "24 hours" not in src and "1 hour" not in src and src.count("10 minutes") >= 5

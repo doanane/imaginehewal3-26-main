@@ -1,0 +1,22 @@
+/** Twi PREVIEW: a few everyday words. A native speaker must review these before wider use. Longer text stays in English. */
+export const tw: Record<string, string> = {
+  'Good morning': 'Mema wo akye',
+  'Good afternoon': 'Mema wo aha',
+  'Good evening': 'Mema wo adwo',
+  'Good morning, {0}': 'Mema wo akye, {0}',
+  'Good afternoon, {0}': 'Mema wo aha, {0}',
+  'Good evening, {0}': 'Mema wo adwo, {0}',
+  'Thank you': 'Meda wo ase',
+  'Yes': 'Aane',
+  'No': 'Daabi',
+  'Home': 'Fie',
+  'Health': 'Ahoɔden',
+  'Steps': 'Anammɔn',
+  'Heart rate': 'Koma bɔ',
+  'Water': 'Nsuo',
+  'Medicine': 'Aduro',
+  'Medicines': 'Aduro',
+  'Doctor': 'Ɔdɔkota',
+  'Help': 'Mmoa',
+  'Save': 'Sie',
+};

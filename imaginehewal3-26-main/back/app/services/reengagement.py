@@ -167,6 +167,18 @@ def _deliver(db: Session, user_id: int, plan: BehaviorPlan, kind: str, channel: 
     return nudge
 
 
+def _record_agent(db: Session, user: User, now: datetime, decision: dict) -> None:
+    """Keep the care agent's trace for every message sent, and for any hand-off a clinician should see. Never allowed to stop a message."""
+    try:
+        from app.services import care_agent as ca
+        inp = ca.gather(db, user, now)
+        if inp and (decision["send"] or ca.trace(inp)["handoff"]["needed"]):
+            ca.record(db, user, inp, "nudge" if decision["send"] else "review")
+    except Exception as e:                                           # the agent's notes must never block the message itself
+        logger.warning("care agent trace failed: %s", type(e).__name__)
+        db.rollback()
+
+
 def run(db: Session, now: Optional[datetime] = None) -> List[dict]:
     """One pass. Returns what was sent (kind, channel, reason) for logging and tests."""
     now = now or datetime.now(timezone.utc).astimezone()
@@ -188,6 +200,7 @@ def run(db: Session, now: Optional[datetime] = None) -> List[dict]:
                           respect_prayer=bool(cx.get("respect_prayer", True)),
                           has_supporter=db.query(BehaviorShare).filter_by(owner_id=plan.user_id, active=True).first() is not None,
                           usual_hour=best_hour(db, plan.user_id, now))
+        _record_agent(db, user, now, decision)
         if not decision["send"]:
             continue
         _deliver(db, plan.user_id, plan, decision["kind"], decision["channel"], s.language or "en", lapse_start, now)
@@ -204,6 +217,10 @@ def mark_responses(db: Session, user_id: int, plan_id: int, when: Optional[datet
             nudge.responded, nudge.responded_at = True, when
             n += 1
     if n:
+        from app.models.behavior import AgentRun
+        for r in db.query(AgentRun).filter(AgentRun.user_id == user_id, AgentRun.kind == "nudge", AgentRun.returned == False).all():  # noqa: E712
+            if r.created_at and 0 <= (when - _aware(r.created_at)).total_seconds() <= ANSWER_WINDOW.total_seconds():
+                r.returned, r.returned_at = True, when
         db.commit()
     return n
 

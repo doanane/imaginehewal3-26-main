@@ -102,7 +102,7 @@ CHAT = [("patient", "Good morning doctor, my reading was a bit high today."), ("
         ("patient", "Thank you doctor. I will do that.")]
 
 WIPE = (("vital_readings", "user_id"), ("health_data", "user_id"), ("medication_logs", "user_id"), ("food_logs", "user_id"), ("sleep_sessions", "user_id"),
-        ("weight_logs", "user_id"), ("behavior_nudges", "user_id"), ("behavior_shares", "owner_id"), ("behavior_actions", "user_id"), ("behavior_plans", "user_id"), ("behavior_settings", "user_id"), ("sos_events", "user_id"),
+        ("weight_logs", "user_id"), ("agent_runs", "user_id"), ("behavior_nudges", "user_id"), ("behavior_shares", "owner_id"), ("behavior_actions", "user_id"), ("behavior_plans", "user_id"), ("behavior_settings", "user_id"), ("sos_events", "user_id"),
         ("doctor_messages", "patient_id"), ("doctor_notes", "patient_id"), ("clinic_documents", "patient_id"),
         ("consultations", "patient_id"), ("doctor_appointments", "patient_id"), ("prescriptions", "patient_id"), ("medications", "user_id"), ("notifications", "user_id"))
 
@@ -300,6 +300,14 @@ def build(db, doctor, caregiver, p, password, idx):
             db.add(SosEvent(user_id=u.id, trigger="vitals" if days_ago == 14 else "manual", reason=reason, severity="high", status="resolved",
                             vitals=dict(systolic=190, diastolic=122, heart_rate=102), created_at=now - timedelta(days=days_ago), attempts=1))
     db.commit()
+    # the care agent's hand-offs for the doctor's review queue (clearly simulated): the patient in crisis, and one long silence
+    from app.services import care_agent
+    from app.models.behavior import AgentRun
+    db.query(AgentRun).filter(AgentRun.user_id == u.id).delete()
+    db.commit()
+    if p["sos"] or idx == 1:
+        care_agent.demo_handoff(db, u, name=p["name"], age=p["age"], conditions=list(p["conds"]) or ["Hypertension"], doctor=doctor.full_name,
+                                kind="safety" if p["sos"] else "silent")
     return u
 
 

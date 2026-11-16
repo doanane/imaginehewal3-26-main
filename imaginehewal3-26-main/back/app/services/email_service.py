@@ -240,9 +240,9 @@ class EmailService:
         body = (f"<p>Hello {esc(user_name)},</p><p>Welcome to HEWAL3. Please confirm this email address so we can reach you about your account.</p>"
                 + (f"<p>Enter this code in the app:</p>{code_box(code)}<p style=\"color:{MUTED};font-size:14px;\">Or open the link below on any device.</p>" if code else "")
                 + button("Verify my email", link)
-                + f'<p style="font-size:14px;color:{MUTED};">The code and link work for 24 hours. If you did not create a HEWAL3 account, you can ignore this email.</p>')
+                + f'<p style="font-size:14px;color:{MUTED};">The code and link work for 10 minutes. If you did not create a HEWAL3 account, you can ignore this email.</p>')
         text = (f"Hello {user_name},\n\nWelcome to HEWAL3. Confirm your email address.\n" + (f"\nYour code: {code}\n" if code else "")
-                + f"\nOr open: {link}\n\nThe code and link work for 24 hours. If you did not create an account, ignore this email.\n")
+                + f"\nOr open: {link}\n\nThe code and link work for 10 minutes. If you did not create an account, ignore this email.\n")
         return self.send_email(user_email, "Verify your HEWAL3 email" if not code else f"Your HEWAL3 verification code: {code}",
                                shell("Confirm your email", "Your HEWAL3 verification code and link", body), text, "verify_email")
 
@@ -251,10 +251,10 @@ class EmailService:
         body = ("<p>We received a request to reset the password of your HEWAL3 account.</p>"
                 + (f"<p>Enter this code in the app, then choose a new password:</p>{code_box(code)}<p style=\"color:{MUTED};font-size:14px;\">Or use the link below.</p>" if code else "")
                 + button("Choose a new password", link)
-                + f'<p style="font-size:14px;color:{MUTED};"><strong>This code and link work for 1 hour.</strong> If you did not ask for this, ignore this email: your password has not changed. '
+                + f'<p style="font-size:14px;color:{MUTED};"><strong>This code and link work for 10 minutes.</strong> If you did not ask for this, ignore this email: your password has not changed. '
                   'Never share this code with anyone, including HEWAL3 staff.</p>')
         text = ("We received a request to reset your HEWAL3 password.\n" + (f"\nYour code: {code}\n" if code else "")
-                + f"\nOr open: {link}\n\nWorks for 1 hour. If you did not ask for this, ignore this email. Never share this code.\n")
+                + f"\nOr open: {link}\n\nWorks for 10 minutes. If you did not ask for this, ignore this email. Never share this code.\n")
         return self.send_email(user_email, "Reset your HEWAL3 password" if not code else f"Your HEWAL3 password reset code: {code}",
                                shell("Reset your password", "Your HEWAL3 password reset code and link", body), text, "password_reset")
 

@@ -635,8 +635,8 @@ def request_otp_login(request_data: RequestOTPLogin, background_tasks: Backgroun
     user = auth_mail.user_by_email(db, email)
     if user:
         otp = generate_otp()
-        db.query(LoginOTP).filter(func.lower(LoginOTP.email) == email, LoginOTP.is_used == False).update({"is_used": True}, synchronize_session=False)  # noqa: E712
-        db.add(LoginOTP(email=email, otp=otp, expires_at=datetime.utcnow() + timedelta(minutes=10)))
+        # an earlier code stays valid until its own 10 minutes are over, so asking again never breaks the email you already have
+        db.add(LoginOTP(email=email, otp=otp, expires_at=datetime.utcnow() + timedelta(minutes=auth_mail.CODE_MINUTES)))
         db.commit()
         background_tasks.add_task(email_service.send_otp_email, user.email, auth_mail.display_name(user), otp)
     return {"message": GENERIC_OTP, "delivery_method": "email"}
@@ -652,9 +652,10 @@ def verify_otp_login(request_data: VerifyOTPLogin, request: Request, db: Session
         db.query(LoginOTP).filter(func.lower(LoginOTP.email) == email, LoginOTP.is_used == False).update({"is_used": True}, synchronize_session=False)  # noqa: E712
         db.commit()
         raise
-    login_otp = (db.query(LoginOTP).filter(func.lower(LoginOTP.email) == email, LoginOTP.is_used == False, LoginOTP.expires_at > datetime.utcnow())  # noqa: E712
-                 .order_by(LoginOTP.id.desc()).first())
-    if not login_otp or not hmac.compare_digest(str(login_otp.otp or ""), request_data.otp):
+    live = (db.query(LoginOTP).filter(func.lower(LoginOTP.email) == email, LoginOTP.is_used == False, LoginOTP.expires_at > datetime.utcnow())  # noqa: E712
+            .order_by(LoginOTP.id.desc()).all())
+    login_otp = next((o for o in live if hmac.compare_digest(str(o.otp or ""), request_data.otp)), None)
+    if not login_otp:
         simple_limiter.record(f"wrong:otp:{email}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That code is wrong or has expired")
     user = auth_mail.user_by_email(db, email)

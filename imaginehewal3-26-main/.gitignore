@@ -10,3 +10,8 @@ CLAUDE.md
 # Notes for the owner only: never pushed
 private/
 *.private.md
+
+# app: keep local env out of git, the example file stays
+front-sdk58/.env
+front-sdk58/ios/
+front-sdk58/android/

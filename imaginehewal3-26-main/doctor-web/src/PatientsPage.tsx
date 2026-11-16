@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ChevronRight, Droplets, Footprints, Heart, Search, Users } from 'lucide-react';
 import type { Group, Overview } from './types';
 import { Badge, Empty, Skeleton } from './ui';
+import AddPatient from './AddPatient';
 import { ago, bpText, GROUP_LABEL, initials, show } from './util';
 
 const FILTERS: (Group | 'all')[] = ['all', 'critical', 'monitor', 'stable', 'healthy', 'no_data'];
@@ -20,7 +21,8 @@ export default function PatientsPage({ overview, error, unread }: { overview: Ov
 
   return (
     <>
-      <header className="page-head"><div><h1>Patients</h1><p>Everyone who chose you as their doctor. Select a patient for their analysis.</p></div></header>
+      <header className="page-head"><div><h1>Patients</h1><p>Everyone who chose you as their doctor, or accepted your request. Select a patient for their analysis.</p></div></header>
+      <AddPatient />
       <section className="card">
         <div className="toolbar">
           <label className="search"><Search size={18} /><input type="search" placeholder="Search by name or patient ID" aria-label="Search patients" value={q} onChange={e => setQ(e.target.value)} /></label>
@@ -33,7 +35,7 @@ export default function PatientsPage({ overview, error, unread }: { overview: Ov
           </div>
         </div>
         {overview.stats.total === 0 ? (
-          <Empty icon={<Users size={28} />} title="No patients yet">A patient appears here when they pick you in the HEWAL3 app under Profile, My doctor, using your ID <b>{overview.doctor.doctor_id}</b>.</Empty>
+          <Empty icon={<Users size={28} />} title="No patients yet">A patient appears here when they pick you in the HEWAL3 app under Profile, My doctor, using your ID <b>{overview.doctor.doctor_id}</b>, or when they accept a request you send above.</Empty>
         ) : rows.length === 0 ? <Empty icon={<Search size={26} />} title="No patient matches" /> : (
           <ul className="prow-list">
             {rows.map((p, i) => (

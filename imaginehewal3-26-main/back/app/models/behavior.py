@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Date, ForeignKey, Boolean, Float, Text
+    Column, Integer, String, DateTime, Date, ForeignKey, Boolean, Float, Text, JSON
 )
 from sqlalchemy.sql import func
 from app.database import Base
@@ -141,3 +141,24 @@ class BehaviorGroupMember(Base):
     group_id = Column(Integer, ForeignKey("behavior_groups.id"), index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AgentRun(Base):
+    """One recorded pass of the care agent for one person: what it sensed, decided and did, and whether a clinician needs to look.
+    The trace is stored so the person, and a doctor they allowed, can see exactly why a message went out. Never used to train anything."""
+    __tablename__ = "agent_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    plan_id = Column(Integer, ForeignKey("behavior_plans.id"), nullable=True)
+    lapse_start = Column(Date, nullable=True)
+    kind = Column(String, nullable=False)                    # nudge | review
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    trace = Column(JSON, nullable=False)
+    handoff_needed = Column(Boolean, default=False, index=True)
+    review_status = Column(String, default="none")           # none | pending | approved | overridden | dismissed
+    reviewed_by = Column(Integer, nullable=True)             # doctors.id
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_note = Column(Text, nullable=True)
+    returned = Column(Boolean, default=False)                # the person checked in within 48 hours of the message
+    returned_at = Column(DateTime(timezone=True), nullable=True)

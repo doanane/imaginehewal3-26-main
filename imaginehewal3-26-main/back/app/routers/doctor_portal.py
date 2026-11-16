@@ -362,7 +362,8 @@ def my_thread_send(body: MessageIn, db: Session = Depends(get_db), user: User = 
         raise HTTPException(422, "Message is empty")
     m = _push_message(db, doc, user, "patient", text)
     d = care_chat.message_dict(m)
-    name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Patient"
+    from app.services.names import lookup
+    name = lookup(db, user.id)
     hub.send_from_thread(care_chat.doctor_key(doc), {"type": "doctor_message.new", "message": d, "patient_id": user.id, "patient_name": name})
     return d
 

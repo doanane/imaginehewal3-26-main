@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth.security import get_current_active_user
 from app.config import settings as app_settings
 from app.database import get_db
-from app.models.behavior import (BehaviorAction, BehaviorCheer, BehaviorContext, BehaviorGroupMember, BehaviorNudge, BehaviorPlan,
+from app.models.behavior import (AgentRun, BehaviorAction, BehaviorCheer, BehaviorContext, BehaviorGroupMember, BehaviorNudge, BehaviorPlan,
                                  BehaviorSettings, BehaviorShare)
 from app.models.health import HealthData
 from app.models.notification import Notification
@@ -249,6 +249,7 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db),
 def delete_my_behavior_data(db: Session = Depends(get_db),
                             user: User = Depends(get_current_active_user)):
     """Revoke consent: erase all plans, actions and preferences."""
+    db.query(AgentRun).filter_by(user_id=user.id).delete()
     db.query(BehaviorNudge).filter_by(user_id=user.id).delete()
     db.query(BehaviorShare).filter((BehaviorShare.owner_id == user.id) | (BehaviorShare.supporter_id == user.id)).delete(synchronize_session=False)
     db.query(BehaviorCheer).filter((BehaviorCheer.from_id == user.id) | (BehaviorCheer.to_id == user.id)).delete(synchronize_session=False)
@@ -272,6 +273,8 @@ def export_my_behavior_data(db: Session = Depends(get_db), user: User = Depends(
         "plans": [_plan_dict(p) for p in plans], "actions": [_action_dict(a) for a in actions],
         "nudges_sent": [{"kind": n.kind, "channel": n.channel, "sent_at": n.sent_at.isoformat() if n.sent_at else None, "came_back": bool(n.responded)}
                         for n in db.query(BehaviorNudge).filter_by(user_id=user.id).order_by(BehaviorNudge.id).all()],
+        "agent_runs": [{"id": r.id, "kind": r.kind, "at": r.created_at.isoformat() if r.created_at else None, "trace": r.trace, "review": r.review_status}
+                       for r in db.query(AgentRun).filter_by(user_id=user.id).order_by(AgentRun.id).all()],
         "shared_with": [{"supporter_id": s.supporter_id, "plan_id": s.plan_id, "level": s.level, "active": s.active}
                         for s in db.query(BehaviorShare).filter_by(owner_id=user.id).all()],
     }

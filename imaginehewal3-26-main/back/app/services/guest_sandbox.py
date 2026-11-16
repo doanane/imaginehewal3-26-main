@@ -27,7 +27,7 @@ _last_built = 0.0
 # what a guest may not do: anything that reaches a real person, a real phone, money, or the account itself
 _BLOCKED = re.compile(
     r"^/(auth/(change-password|forgot-password|reset-password|resend-verification|delete)|users/(delete|change)|privacy|push/|emergency|payment|huawei|"
-    r"caregivers/(invite|link|request)|my-doctor/link|sms|admin|superadmin)", re.I)
+    r"caregivers/(invite|link|request)|my-doctor/(link|requests)|doctor-portal/link-requests|sms|admin|superadmin)", re.I)
 
 
 def is_guest_email(email: str | None) -> bool:
@@ -52,7 +52,8 @@ _MEALS = [
 def _wipe(db: Session, uid: int, doctor_pk: int | None) -> None:
     for tbl, col in (("vital_readings", "user_id"), ("health_data", "user_id"), ("medication_logs", "user_id"), ("medications", "user_id"),
                      ("food_logs", "user_id"), ("sleep_sessions", "user_id"), ("doctor_messages", "patient_id"), ("doctor_appointments", "patient_id"),
-                     ("notifications", "user_id")):
+                     ("notifications", "user_id"), ("agent_runs", "user_id"), ("behavior_nudges", "user_id"), ("behavior_actions", "user_id"),
+                     ("behavior_plans", "user_id"), ("behavior_settings", "user_id")):
         try:
             db.execute(text(f"DELETE FROM {tbl} WHERE {col} = :u"), {"u": uid})
         except Exception:
@@ -82,7 +83,9 @@ def ensure_sandbox(db: Session, force: bool = False):
     from sqlalchemy import func
     from app.models.iot_device import VitalReading
     fresh = db.query(func.max(VitalReading.timestamp)).filter(VitalReading.user_id == user.id).scalar()
-    if not force and fresh is not None:
+    from app.models.behavior import AgentRun
+    has_agent = db.query(AgentRun.id).filter(AgentRun.user_id == user.id).first() is not None       # an older sandbox is rebuilt once to gain the agent demo
+    if not force and fresh is not None and has_agent:
         fresh = fresh if getattr(fresh, "tzinfo", None) else fresh.replace(tzinfo=timezone.utc)
         if datetime.now(timezone.utc) - fresh < timedelta(seconds=REBUILD_AFTER_S):
             _last_built = time.time()
@@ -161,5 +164,18 @@ def _build(db: Session, user, doctor) -> None:
                             mode="video", reason="Blood pressure review (demo)", status="confirmed", requested_by="doctor"))
     db.add(DoctorMessage(doctor_pk=doctor.id, patient_id=user.id, sender_role="doctor", created_at=now - timedelta(hours=5),
                          content="Welcome to the HEWAL3 demo. Your readings this week look steady. Keep taking your medicines as planned."))
+    # a movement habit that went quiet four days ago, so the care agent has something real to show in the app and on the doctor's patient page
+    from app.models.behavior import BehaviorAction, BehaviorPlan, BehaviorSettings
+    from app.services import care_agent
+    plan = BehaviorPlan(user_id=user.id, behavior="movement", goal_text="Walk more (demo)", baseline_value=3000.0, goal_value=7000.0, unit="steps", level=3,
+                        active=True, start_date=today - timedelta(days=14))
+    db.add(plan); db.flush()
+    for back in range(13, 4, -1):                                                # engaged for nine days, then four quiet days
+        db.add(BehaviorAction(plan_id=plan.id, user_id=user.id, action_date=today - timedelta(days=back), title="Reach 4,500 steps", detail="A small step for today (demo).",
+                              technique="Goal setting", rationale="Small steps add up.", target_value=4500.0, level=3, is_comeback=False, status="done",
+                              value_done=4700.0, source="demo", completed_at=now - timedelta(days=back)))
+    db.add(BehaviorSettings(user_id=user.id, language="en", notifications_enabled=True, wearable_data_enabled=False, share_with_doctor=True, max_nudges_per_week=2))
+    db.commit()
+    care_agent.demo_handoff(db, user, name="Ama Mensah (demo)", age=52, conditions=["Hypertension"], doctor="Dr. Efua Owusu (demo)", kind="safety")
     db.commit()
     logger.info("guest sandbox rebuilt")

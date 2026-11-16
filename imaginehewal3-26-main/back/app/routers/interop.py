@@ -96,7 +96,17 @@ def system_card():
         "name": "HEWAL3", "purpose": "Help people keep up healthy habits, notice when they have gone quiet, and bring them back kindly, "
                                       "while giving their clinician a trustworthy view.",
         "environment": settings.ENVIRONMENT,
+        "agent": {
+            "what": "A care agent that runs by itself: it senses check-ins, readings, the person's clock and week, decides with written rules, acts with one fitted message, hands off to a clinician only when needed, and measures whether the person came back.",
+            "loop": ["sense", "decide", "act", "hand off", "measure"],
+            "decides_with": "Written rules, unit tested. No language model makes any decision.",
+            "explainable": "Every pass keeps a trace (what it noticed, why, what it did, who looks next). The person sees it in the app; a doctor sees habit detail only with the patient's consent.",
+            "human_in_the_loop": "A clinician is asked only for a very high reading, or a long silence in a person with a condition. They approve, change or dismiss. The agent never changes a medicine or a treatment.",
+            "when_wrong": "One tap stops all messages, makes the step smaller, or marks a message not helpful (which makes outreach quieter).",
+            "try_it": "GET /agent/story (a simulated person run through the same rules); the doctor site page #/story needs no sign-in.",
+        },
         "deterministic": [
+            "The care agent's decisions (lapse, stage, send or wait, hand-off) and its trace (`care_agent`, unit tested).",
             "The habit loop: step size, level changes, lapse detection (3 or more days without a check-in) and the comeback step (engine, unit tested).",
             "Patient status for every role (one definition, `care_snapshot`) and Home alerts (`alert_rules`: needs repeated readings, never one).",
             "Medicine adherence counts only doses that were due; fewer than 3 due gives 'not enough data', never 0%.",

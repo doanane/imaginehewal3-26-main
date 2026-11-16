@@ -11,6 +11,7 @@ from app.services.emergency_service import OPEN
 from app.models.health import HealthData
 from app.models.iot_device import VitalReading
 from app.models.user import User, UserProfile
+from app.services import names
 from app.services.risk_service import med_adherence
 
 FRESH_HOURS = 24          # a reading older than this is shown as "no recent data", not as a current value
@@ -101,7 +102,7 @@ def snapshot(db: Session, user: User, profile: Optional[UserProfile]) -> Dict[st
     return {
         "patient_id": user.id,
         "identifier": user.patient_id,
-        "name": (profile.full_name if profile else None) or user.username or user.email,
+        "name": names.person_name(user, profile),
         "age": profile.age if profile else None, "gender": profile.gender if profile else None,
         "conditions": (profile.chronic_conditions if profile else None) or [],
         "vitals": vit,

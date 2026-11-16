@@ -1,0 +1,77 @@
+{
+  "expo": {
+    "name": "hewal3",
+    "slug": "hewal3",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "hewal3",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.oggskimmer.hewal3",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundImage": "./assets/images/background.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "HEWAL3 reads your health data to show your activity and vital trends in one place. You choose what to share.",
+          "NSHealthUpdateUsageDescription": "HEWAL3 only writes health data when you explicitly log it.",
+          "background": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo.png",
+          "imageWidth": 260,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      ["react-native-ble-plx", { "isBackgroundEnabled": false, "neverForLocation": true, "bluetoothAlwaysPermission": "HEWAL3 uses Bluetooth to read heart rate from your watch." }]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "geminiApiKey": "",
+      "azureOpenAiEndpoint": "",
+      "azureOpenAiKey": "",
+      "azureOpenAiDeployment": "",
+      "azureOpenAiApiVersion": "2025-01-01-preview",
+      "emergencyNumber": "112",
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "32b1b881-d290-4f33-91c2-acb92a03f31b"
+      }
+    }
+  }
+}

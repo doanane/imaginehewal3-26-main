@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
-import { Activity, BarChart3, CalendarClock, CalendarDays, FileText, HeartPulse, LayoutDashboard, MessageSquare, Siren, Users, WifiOff } from 'lucide-react';
+import { Activity, BarChart3, Bot, CalendarClock, CalendarDays, FileText, HeartPulse, LayoutDashboard, MessageSquare, Siren, Users, WifiOff } from 'lucide-react';
 import { getAppointments, getInbox, getOverview, Profile, loadSession, saveSession, setExpiredHandler, Session } from './api';
 import Login from './Login';
 import OverviewPage from './OverviewPage';
@@ -18,6 +18,8 @@ import VerifyPage from './VerifyPage';
 import CommandPalette from './CommandPalette';
 import { PrintDoc, PrintRx } from './PrintDoc';
 import ImpactPage from './ImpactPage';
+import AgentPage from './AgentPage';
+import StoryPage from './StoryPage';
 import TopBar from './TopBar';
 import Logo from './Logo';
 import { CallProvider } from './calls';
@@ -33,6 +35,7 @@ const NAV = [
   { href: '#/appointments', label: 'Appointments', icon: CalendarDays, match: (r: string) => r.startsWith('#/appointments') },
   { href: '#/documents', label: 'Documents', icon: FileText, match: (r: string) => r.startsWith('#/documents') || r.startsWith('#/doc/') || r.startsWith('#/rx/') },
   { href: '#/panel', label: 'Panel health', icon: HeartPulse, match: (r: string) => r.startsWith('#/panel') },
+  { href: '#/agent', label: 'Care agent', icon: Bot, match: (r: string) => r.startsWith('#/agent') },
   { href: '#/impact', label: 'Impact', icon: BarChart3, match: (r: string) => r.startsWith('#/impact') },
   { href: '#/alerts', label: 'Emergencies', icon: Siren, match: (r: string) => r.startsWith('#/alerts') },
 ];
@@ -48,6 +51,7 @@ export default function App() {
   }, []);
   useEffect(() => { setExpiredHandler(() => signOut(true)); }, [signOut]);
 
+  if (/^#\/story\/?$/.test(route)) return <MotionConfig reducedMotion="user"><StoryPage /></MotionConfig>;      // the story is public: judges can watch it with no sign-in
   const pub = /^#\/verify\/?(.*)$/.exec(route);          // the check page works without signing in
   if (pub) return <MotionConfig reducedMotion="user"><VerifyPage initial={decodeURIComponent(pub[1] || '')} /></MotionConfig>;
   return (
@@ -124,6 +128,7 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
   else if (route.startsWith('#/patients')) page = <PatientsPage overview={data} error={error} unread={unread} />;
   else if (route.startsWith('#/alerts')) page = <AlertsPage overview={data} />;
   else if (route.startsWith('#/appointments')) page = <AppointmentsPage />;
+  else if (route.startsWith('#/agent')) page = <AgentPage />;
   else if (route.startsWith('#/impact')) page = <ImpactPage />;
   else if (route.startsWith('#/profile')) page = <ProfilePage onSaved={onProfile} />;
   else page = <TodayPage overview={data} error={error} />;
