@@ -54,8 +54,11 @@ class Realtime {
 
   private open() {
     if (!this.token) return;
+    // Normally the page and the API share one address. When the site is hosted somewhere that cannot pass websockets on
+    // (for example Vercel), VITE_API_ORIGIN names the backend and the live connection goes straight to it.
+    const origin = String((import.meta as any).env?.VITE_API_ORIGIN || '').replace(/\/$/, '');
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${window.location.host}/ws`);
+    const ws = new WebSocket(origin ? `${origin.replace(/^http/, 'ws')}/ws` : `${proto}://${window.location.host}/ws`);
     this.ws = ws;
     ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', token: this.token }));
     ws.onmessage = ev => {
