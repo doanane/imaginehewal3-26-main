@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, ChevronDown, LogOut, Search, UserCog } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Menu, Search, UserCog } from 'lucide-react';
 import type { DoctorInfo } from './types';
 import { ThemeToggle } from './theme';
 import { initials } from './util';
 
 /** Top right corner: who is signed in, with a menu for the profile, the colour theme and signing out. */
-export default function TopBar({ doctor, signOut, notes = [] }: { doctor: DoctorInfo; signOut: () => void; notes?: { text: string; href: string }[] }) {
+export default function TopBar({ doctor, signOut, notes = [], onMenu, menuOpen = false }: { doctor: DoctorInfo; signOut: () => void; notes?: { text: string; href: string }[]; onMenu?: () => void; menuOpen?: boolean }) {
   const [bell, setBell] = useState(false);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -23,6 +23,7 @@ export default function TopBar({ doctor, signOut, notes = [] }: { doctor: Doctor
   const sub = [doctor.specialization, doctor.hospital].filter(Boolean).join(', ');
   return (
     <div className="topbar">
+      {onMenu && <button type="button" className="icon-btn hamburger" onClick={onMenu} aria-label={menuOpen ? 'Close the menu' : 'Open the menu'} aria-expanded={menuOpen} aria-controls="side-nav"><Menu size={20} /></button>}
       <button type="button" className="search-btn" onClick={() => window.dispatchEvent(new Event('open-palette'))} aria-label="Search patients and pages"><Search size={16} /><span>Search</span><kbd>Ctrl K</kbd></button>
       <div className="bell-wrap">
         <button type="button" className="icon-btn bell" aria-label={`Notifications, ${notes.length}`} aria-expanded={bell} onClick={() => setBell(b => !b)}><Bell size={18} />{notes.length > 0 && <em className="count">{notes.length}</em>}</button>

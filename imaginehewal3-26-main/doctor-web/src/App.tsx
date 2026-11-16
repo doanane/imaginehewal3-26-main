@@ -61,6 +61,13 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
   // one shared, always fresh copy of the doctor's panel; every page reads from it so they never disagree
   const { data, error, online, updated, reload } = usePolling<Overview>(getOverview, 30000, []);   // the websocket pushes changes; this is the safety net
   const [live, setLive] = useState(false);
+  // Menu: on a wide screen it collapses to icons (remembered); on a narrow one it slides in over the page.
+  const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('hw_side_collapsed') === '1'; } catch { return false; } });
+  const [drawer, setDrawer] = useState(false);
+  const narrow = () => window.matchMedia('(max-width: 1000px)').matches;
+  const toggleMenu = () => { if (narrow()) setDrawer(o => !o); else setCollapsed(c => { const n = !c; try { localStorage.setItem('hw_side_collapsed', n ? '1' : '0'); } catch { /* storage unavailable */ } return n; }); };
+  useEffect(() => { setDrawer(false); }, [route]);
+  useEffect(() => { if (!drawer) return; const f = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawer(false); }; document.addEventListener('keydown', f); return () => document.removeEventListener('keydown', f); }, [drawer]);
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [toast, setToast] = useState('');
   const [requests, setRequests] = useState(0);
@@ -122,14 +129,15 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
   else page = <TodayPage overview={data} error={error} />;
 
   return (
-    <div className="shell">
-      <aside className="side">
+    <div className={`shell ${collapsed ? 'collapsed' : ''} ${drawer ? 'menu-open' : ''}`}>
+      {drawer && <button type="button" className="scrim" aria-label="Close the menu" onClick={() => setDrawer(false)} />}
+      <aside className="side" id="side-nav">
         <a className="brand-row" href="#/"><Logo width={168} /></a>
         <nav aria-label="Main">
           {NAV.map(n => {
             const active = n.match(route);
             return (
-              <a key={n.href} href={n.href} className={`nav ${active ? 'on' : ''}`} aria-current={active ? 'page' : undefined}>
+              <a key={n.href} href={n.href} title={n.label} className={`nav ${active ? 'on' : ''}`} aria-current={active ? 'page' : undefined}>
                 {active && <motion.span layoutId="nav-pill" className="nav-pill" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
                 <n.icon size={19} /><span>{n.label}</span>
                 {n.label === 'Messages' && unreadTotal > 0 && <em className="count msg" aria-label={`${unreadTotal} unread messages`}>{unreadTotal}</em>}
@@ -148,7 +156,7 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
       </aside>
       <main className="main" id="content">
         {d.doctor_id === 'DOCGUEST' && <div className="demo-bar" role="alert">Demo mode. Sample data, not real patients.</div>}
-        <TopBar doctor={d} signOut={signOut} notes={notes} />
+        <TopBar doctor={d} signOut={signOut} notes={notes} onMenu={toggleMenu} menuOpen={drawer} />
         <CommandPalette overview={data} />
         <AnimatePresence mode="wait">
           <motion.div key={pageKey} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
