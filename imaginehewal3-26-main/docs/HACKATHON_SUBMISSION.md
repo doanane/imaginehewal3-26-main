@@ -44,10 +44,13 @@ The behaviour engine is rule-based Python with no network or LLM calls. Azure SD
 - Consent is granular, revocable and enforced in the API (wearable sync returns 403 unless enabled).
 - Anti-manipulation: no loss framing, streaks forgive single misses, the user can switch gamification and reminders off.
 - Fairness: equity endpoint with k-anonymity (k=5).
-- [Add: hosting region, retention period, who can access the database.]
+- Hosting today: API on Render and PostgreSQL on Neon, both in the United States (US East). **This does not meet a requirement to keep data inside the UAE.** A UAE or Gulf cloud region is the first step of any Abu Dhabi pilot (see `PILOT_AND_COMMERCIAL.md`).
+- Retention: data stays until the person deletes it (one-tap export and full erase are built). A fixed retention period will be set with the pilot partner and its ethics board.
+- Access: only the database administrator and the API. Doctors see only patients assigned to them, caregivers only people who approved them, and every caregiver view is logged and shown to the patient. Secrets live in environment variables, not in code.
+- Transparency: `GET /system/card` lists what is AI and what is deterministic, the safety gates, the limits and the switches that are on right now. Rule behaviour under noise is in `VALIDATION.md`.
 
 ## 7. Scalability and path to pilot
-[Add: target clinic or programme, e.g. link to an existing screening or patient-app journey; the Postgres schema and FastAPI service are stateless and deployable on any cloud; pilot metrics = 8-week persistence and recovery time after lapse.]
+Target and plan: `PILOT_AND_COMMERCIAL.md`. Interoperability: HL7 FHIR R4 export per patient (`GET /doctor-portal/patients/{id}/fhir`, also a button on the doctor site). Load: `scripts/load_test.py`; a measured run is in `ASSESSMENT_MAP.md`. The Postgres schema and FastAPI service are stateless and deployable on any cloud; the in-process realtime hub and worker need Redis and a job queue before running more than one instance.
 
 ---
 

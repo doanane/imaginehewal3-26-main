@@ -6,3 +6,7 @@ test_output.txt
 back/docs/azure app settings.txt
 
 CLAUDE.md
+
+# Notes for the owner only: never pushed
+private/
+*.private.md
