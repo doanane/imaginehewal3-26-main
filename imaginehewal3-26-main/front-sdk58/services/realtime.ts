@@ -62,6 +62,16 @@ class Realtime {
     return false;
   }
 
+  /** Resolves true as soon as the live connection is up, or false after `ms`. A restart or a sleeping server drops it for a few seconds. */
+  whenConnected(ms = 10000): Promise<boolean> {
+    if (this.connected) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      let off: () => void = () => {};
+      const t = setTimeout(() => { off(); resolve(false); }, ms);
+      off = this.onStatus((up) => { if (up) { clearTimeout(t); off(); resolve(true); } });
+    });
+  }
+
   private onAppState = (state: AppStateStatus) => {
     if (state === 'active' && this.wanted && !this.connected) {
       this.retry = 0;

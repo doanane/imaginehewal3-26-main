@@ -40,6 +40,16 @@ class Realtime {
     return false;
   }
 
+  /** Resolves true as soon as the live connection is up, or false after `ms`. A restart or a sleeping server drops it for a few seconds. */
+  whenUp(ms = 10000): Promise<boolean> {
+    if (this.up) return Promise.resolve(true);
+    return new Promise(resolve => {
+      const done = (v: boolean) => { window.clearTimeout(t); off(); resolve(v); };
+      const off = this.onStatus(up => { if (up) done(true); });
+      const t = window.setTimeout(() => done(false), ms);
+    });
+  }
+
   private setUp(v: boolean) { if (this.up !== v) { this.up = v; this.status.forEach(h => h(v)); } }
 
   private open() {

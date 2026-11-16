@@ -144,7 +144,10 @@ class Calls {
 
   async start(peer: number, name: string, media: CallMedia) {
     if (!this.available || this.state.phase !== 'idle') return;
-    if (!realtime.connected) { this.flash('Not connected yet. Try again in a moment.'); return; }
+    if (!realtime.connected) {
+      this.flash('Connecting to the server...');
+      if (!(await realtime.whenConnected(10000))) { this.flash('Cannot reach the server right now. Check your connection and try again.'); return; }
+    }
     api.getIceServers().then((r) => { iceServers = r.iceServers; }).catch(() => {});   // STUN plus a TURN relay when the server has one
     const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
     this.set({ ...IDLE, peer, name, media, id });

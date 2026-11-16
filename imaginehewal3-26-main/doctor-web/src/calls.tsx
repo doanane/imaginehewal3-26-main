@@ -78,7 +78,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const start = useCallback(async (peer: number, name: string, media: Media) => {
     if (callRef.current.phase !== 'idle') return;
     unlockAudio();
-    if (!realtime.up) { set({ ...IDLE, note: 'Not connected yet. Try again in a moment.' }); return; }
+    if (!realtime.up) {
+      set({ ...IDLE, note: 'Connecting to the server...' });
+      if (!(await realtime.whenUp(10000))) { set({ ...IDLE, note: 'Cannot reach the server right now. Check the connection and try again.' }); return; }
+      set({ ...IDLE });
+    }
     const id = (crypto.randomUUID?.() || String(Date.now()));
     getIce().then(r => { ice.current = r.iceServers; }).catch(() => {});   // STUN, plus a TURN relay with short-lived credentials when the server has one
     try { await getMedia(media); } catch { set({ ...IDLE, note: 'Allow microphone' + (media === 'video' ? ' and camera' : '') + ' access to place a call.' }); return; }
