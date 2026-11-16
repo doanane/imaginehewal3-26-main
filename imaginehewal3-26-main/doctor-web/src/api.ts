@@ -39,6 +39,7 @@ export const getOverview = () => call<Overview>('/overview');
 export const getPatient = (id: number) => call<Detail>(`/patients/${id}`);
 export const getAnalytics = (id: number, days: number) => call<Analytics>(`/patients/${id}/analytics?days=${days}`);
 export const getCohort = (days: number) => call<Cohort>(`/cohort?days=${days}`);
+export const getFhir = (id: number) => call<unknown>(`/patients/${id}/fhir`);
 export const getBrief =(id: number, refresh = false) => call<Brief>(`/patients/${id}/brief${refresh ? '?refresh=true' : ''}`);
 
 export interface ChatMessage { id: number; sender_role: 'doctor' | 'patient'; content: string; created_at: string | null; read_at: string | null }

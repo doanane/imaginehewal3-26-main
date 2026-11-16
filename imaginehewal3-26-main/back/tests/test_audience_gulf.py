@@ -119,3 +119,29 @@ def test_emergency_config_follows_the_persons_region(env):  # noqa: F811
     r = c.get("/emergency/config", headers=h).json()
     assert r["emergency_number"] == "998" and r["numbers"]["police"] == "999" and r["region"] == "ae"
     c.put("/behavior/context", headers=h, json={"region": "gh"})
+
+
+# ------------------------------------------------------------------ interoperability and transparency
+def test_fhir_export_is_real_data_only_and_doctor_scoped(env):  # noqa: F811
+    c = env["client"]
+    _, h = login(c)
+    assert c.post("/vitals/ingest", headers=env["hp"], json={"device_id": "fhir-w1", "heart_rate": 71, "blood_oxygen": 97,
+                                                              "blood_pressure_systolic": 128, "blood_pressure_diastolic": 82}).status_code == 200
+    b = c.get(f"/doctor-portal/patients/{env['pat']}/fhir", headers=h).json()
+    assert b["resourceType"] == "Bundle" and b["entry"][0]["resource"]["resourceType"] == "Patient"
+    kinds = {e["resource"]["resourceType"] for e in b["entry"]}
+    assert "Observation" in kinds and "not a hospital record" in b["meta"]["tag"][0]["display"].lower()
+    codes = {e["resource"]["code"]["coding"][0]["code"] for e in b["entry"] if e["resource"]["resourceType"] == "Observation"}
+    assert {"8867-4", "59408-5", "85354-9"} <= codes
+    bp = next(e["resource"] for e in b["entry"] if e["resource"]["resourceType"] == "Observation" and e["resource"]["code"]["coding"][0]["code"] == "85354-9")
+    assert {x["valueQuantity"]["value"] for x in bp["component"]} == {128, 82}
+    assert c.get(f"/doctor-portal/patients/{env['other']}/fhir", headers=h).status_code == 404       # not this doctor's patient
+    assert c.get(f"/doctor-portal/patients/{env['pat']}/fhir", headers=env["hp"]).status_code == 403   # a patient token is not a doctor
+
+
+def test_system_card_is_public_and_holds_no_personal_data(env):  # noqa: F811
+    r = env["client"].get("/system/card")
+    assert r.status_code == 200
+    card = r.json()
+    assert "diagnosis" in card["ai"]["never_used_for"] and card["deterministic"] and card["safety_gates"] and card["limits"]
+    assert "@" not in r.text

@@ -49,6 +49,7 @@ from app.routers.explore import router as explore_router
 from app.routers.auth_pages import router as auth_pages_router
 from app.routers.clinic import router as clinic_router, public_router as clinic_public_router
 from app.routers.guest import router as guest_router
+from app.routers.interop import router as interop_router
 from app.routers.doctor_portal import router as doctor_portal_router, patient_router as my_doctor_router
 from app.routers.ai import router as ai_router
 from app.routers.huawei import router as huawei_router, huawei_worker
@@ -187,6 +188,7 @@ app.include_router(auth_pages_router)
 app.include_router(clinic_router)
 app.include_router(guest_router)
 app.include_router(clinic_public_router)
+app.include_router(interop_router)
 app.include_router(doctor_portal_router)
 app.include_router(ai_router)
 app.include_router(huawei_router)

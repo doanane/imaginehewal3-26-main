@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Activity, AlertCircle, AlertTriangle, ArrowLeft, ClipboardList, HeartHandshake, Footprints, Info, MapPin, OctagonAlert, Pill, ScrollText, Send, Sparkles, Stethoscope, UtensilsCrossed } from 'lucide-react';
-import { getAnalytics, getBrief, getPatient } from './api';
+import { getAnalytics, getBrief, getFhir, getPatient } from './api';
 import ChatPanel from './Chat';
 import ConsultButton from './ConsultButton';
 import { ClinicDoc, Consultation, getPatientConsultations, getPatientDocuments } from './api';
@@ -48,7 +48,7 @@ export default function PatientPage({ id, overview }: { id: number; overview: Ov
           {p.conditions.length > 0 && <div className="tags">{p.conditions.map(c => <span key={c} className="tag">{c}</span>)}</div>}
           {p.reasons.length > 0 && <div className="tags">{p.reasons.map(r => <span key={r} className="tag warn">{r}</span>)}</div>}
         </div>
-        <div className="hero-side"><ConsultButton patientId={id} label="Start consultation" /><small>Last reading</small><b>{ago(v.at)}</b>{p.caregivers.length > 0 && <small>Caregivers: {p.caregivers.join(', ')}</small>}</div>
+        <div className="hero-side"><ConsultButton patientId={id} label="Start consultation" /><button type="button" className="btn ghost small" onClick={async () => { try { const b = await getFhir(id); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(b, null, 2)], { type: 'application/fhir+json' })); a.download = `hewal3-patient-${id}-fhir.json`; a.click(); } catch { /* shown by the api layer */ } }}>Export FHIR</button><small>Last reading</small><b>{ago(v.at)}</b>{p.caregivers.length > 0 && <small>Caregivers: {p.caregivers.join(', ')}</small>}</div>
       </section>
 
       <div className="tabbar">
