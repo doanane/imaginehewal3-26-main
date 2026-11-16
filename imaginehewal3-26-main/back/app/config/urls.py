@@ -3,8 +3,8 @@ import os
 from app.config import settings
 
 # Production URLs
-PRODUCTION_BASE_URL = "https://hewal3-backend-api-aya3dzgefte4b3c3.southafricanorth-01.azurewebsites.net"
-PRODUCTION_FRONTEND_URL = "https://kwanpa-health-hub-six.vercel.app"  # Your frontend URL
+PRODUCTION_BASE_URL = os.getenv("BASE_URL", "")
+PRODUCTION_FRONTEND_URL = os.getenv("FRONTEND_URL", "")
 
 # Get environment
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production")

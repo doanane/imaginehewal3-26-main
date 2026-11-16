@@ -8,7 +8,7 @@ Copy-Item .env .env.backup -Force
 Write-Host "`nStep 2: Creating clean template..." -ForegroundColor Cyan
 @"
 # Database
-DATABASE_URL=postgresql://user:password@server.postgres.database.azure.com:5432/dbname?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require
 
 # Azure Custom Vision
 AZURE_CUSTOM_VISION_PREDICTION_ENDPOINT=https://your-endpoint.cognitiveservices.azure.com/customvision/v3.0/Prediction/...

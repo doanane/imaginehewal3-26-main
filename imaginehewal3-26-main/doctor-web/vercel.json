@@ -1,0 +1,11 @@
+{
+  "framework": "vite",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/doctor-portal/:path*", "destination": "https://imaginehewal3-26-main.onrender.com/doctor-portal/:path*" },
+    { "source": "/auth/:path*", "destination": "https://imaginehewal3-26-main.onrender.com/auth/:path*" },
+    { "source": "/rtc/:path*", "destination": "https://imaginehewal3-26-main.onrender.com/rtc/:path*" },
+    { "source": "/verify/:path*", "destination": "https://imaginehewal3-26-main.onrender.com/verify/:path*" }
+  ]
+}

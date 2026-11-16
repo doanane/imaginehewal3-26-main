@@ -73,7 +73,6 @@ allowed_origins = [
     "http://localhost:3000",
     "http://localhost:8000",
     "https://kwanpa-health-hub-six.vercel.app",
-    "https://hewal3-backend-api-aya3dzgefte4b3c3.southafricanorth-01.azurewebsites.net",  # noqa
 ]
 
 if settings.ENVIRONMENT == "development":

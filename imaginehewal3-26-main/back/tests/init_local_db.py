@@ -26,7 +26,7 @@ from app.models import (
 
 # Your Local Connection String
 # Note: %40 is the URL encoded version of @
-LOCAL_DB_URL = "postgresql+psycopg2://postgres:S%400570263170s@localhost:5432/kwanpa_db1"
+LOCAL_DB_URL = os.environ["LOCAL_DB_URL"]  # set in .env, never in code
 
 def init_db():
     print("🚀 Initializing Local Database...")

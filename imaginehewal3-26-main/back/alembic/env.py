@@ -23,6 +23,9 @@ from app.models import (
     audit
 )
 from app.database import Base
+from app.config import settings as _settings
+if _settings.DATABASE_URL:
+    context.config.set_main_option("sqlalchemy.url", _settings.DATABASE_URL.replace("%", "%%"))
 from app.models.user import User
 from app.models.caregiver import CaregiverRelationship, Message, Doctor
 from app.models.caregiver_tasks import CaregiverTask

@@ -8,7 +8,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_PUBLIC_DEFAULT_KEY = "-GHyAbetQfDupfx6XXyDkSu0vVkKzmdG4kIMYp7Q13A"  # was committed to the repo: never trust
+_PUBLIC_DEFAULT_KEY = "-GHyAbetQfDupfx6XXyDkSu0vVkKzmdG4kIMYp7Q13A"  # an old key that was once committed: never accept it
+
+
+def _dev_key() -> str:
+    """No secret lives in code. Without SECRET_KEY a development run gets a random one (tokens reset on restart)."""
+    import secrets
+    return secrets.token_urlsafe(48)
 
 
 def _parse_list(value, default):
@@ -41,9 +47,7 @@ class Settings(BaseModel):
     GEMINI_API: str = os.getenv("GEMINI_API", "")
 
     # JWT Authentication
-    SECRET_KEY: str = os.getenv(
-        "SECRET_KEY", "-GHyAbetQfDupfx6XXyDkSu0vVkKzmdG4kIMYp7Q13A"
-    )
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "43200")
@@ -128,7 +132,7 @@ class Settings(BaseModel):
     # Security Settings (aliases for compatibility)
     JWT_SECRET_KEY: str = os.getenv(
         "JWT_SECRET_KEY",
-        os.getenv("SECRET_KEY", "-GHyAbetQfDupfx6XXyDkSu0vVkKzmdG4kIMYp7Q13A"),
+        os.getenv("SECRET_KEY", ""),
     )
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
@@ -140,6 +144,9 @@ class Settings(BaseModel):
 
 
 settings = Settings()
+if not settings.SECRET_KEY and settings.ENVIRONMENT == "development":
+    settings.SECRET_KEY = settings.JWT_SECRET_KEY = _dev_key()
+    logging.getLogger(__name__).warning("SECRET_KEY is not set: using a random one for this run. Set SECRET_KEY in .env to keep sessions across restarts.")
 
 
 if settings.SECRET_KEY in ("", _PUBLIC_DEFAULT_KEY):
