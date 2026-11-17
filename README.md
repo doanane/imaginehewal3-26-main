@@ -6,7 +6,8 @@
 
 A complete, working health platform for people with long-term conditions, desk-based workers, and young, middle-aged and older adults. A phone app for patients and caregivers, a website for doctors, and one API behind both.
 
-[![Demo video](https://img.shields.io/badge/demo-YouTube-ff0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/jdmzTuE2sWw)
+[![Demo video](https://img.shields.io/badge/demo-YouTube-ff0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/OZlOT4_6Sio
+)
 [![Live API](https://img.shields.io/badge/live%20API-Render-46E3B7?style=flat-square)](https://imaginehewal3-26-main.onrender.com/ping)
 [![Doctor site](https://img.shields.io/badge/doctor%20site-%2Fdoctor%2F-1f6feb?style=flat-square)](https://imaginehewal3-26-main.onrender.com/doctor/)
 [![System card](https://img.shields.io/badge/system%20card-public-8957e5?style=flat-square)](https://imaginehewal3-26-main.onrender.com/system/card)
@@ -19,7 +20,9 @@ A complete, working health platform for people with long-term conditions, desk-b
 
 > **HEWAL3 is live and fully working.** Patients and caregivers use the phone app, doctors use the website, and both run on one API deployed on Render. Watch the [care agent story](https://imaginehewal3-26-main.onrender.com/doctor/#/story) with no sign-in, or open the [doctor site](https://imaginehewal3-26-main.onrender.com/doctor/) and choose **Continue as Reviewer**, or choose it in the app. HEWAL3 supports care and does not diagnose; it is not a medical device.
 >
-> **Watch the demo:** [https://youtu.be/jdmzTuE2sWw](https://youtu.be/jdmzTuE2sWw)
+> **Watch the demo:** [https://youtu.be/OZlOT4_6Sio
+](https://youtu.be/OZlOT4_6Sio
+)
 
 ---
 
@@ -43,9 +46,12 @@ A complete, working health platform for people with long-term conditions, desk-b
 
 ## Demo video
 
-[![Watch the HEWAL3 demo](https://img.youtube.com/vi/jdmzTuE2sWw/hqdefault.jpg)](https://youtu.be/jdmzTuE2sWw)
+[![Watch the HEWAL3 demo](https://img.youtube.com/vi/jdmzTuE2sWw/hqdefault.jpg)](https://youtu.be/OZlOT4_6Sio
+)
 
-Watch the full demo on YouTube: [https://youtu.be/jdmzTuE2sWw](https://youtu.be/jdmzTuE2sWw)
+Watch the full demo on YouTube: [https://youtu.be/OZlOT4_6Sio
+](https://youtu.be/OZlOT4_6Sio
+)
 
 ---
 
