@@ -160,10 +160,10 @@ def _ensure_columns():
               "community_posts": [("group_key", "VARCHAR"), ("image_urls", "JSON")],
               "community_reviews": [("updated_at", "TIMESTAMP")],
               "health_data": [("active_minutes", "INTEGER"), ("distance_m", "INTEGER"), ("steps_source", "VARCHAR")],
-              "behavior_contexts": [("segment", "VARCHAR"), ("region", "VARCHAR DEFAULT 'gh'"), ("respect_prayer", "BOOLEAN DEFAULT TRUE")],
+              "behavior_contexts": [("preferred_clock", "VARCHAR"), ("segment", "VARCHAR"), ("region", "VARCHAR DEFAULT 'gh'"), ("respect_prayer", "BOOLEAN DEFAULT TRUE")],
               "behavior_settings": [("reengage_channel", "VARCHAR DEFAULT 'push'"), ("max_nudges_per_week", "INTEGER DEFAULT 2"),
                                     ("share_with_doctor", "BOOLEAN DEFAULT FALSE"), ("reminder_mode", "VARCHAR DEFAULT 'auto'"),
-                                    ("reminder_hour", "INTEGER"), ("reminder_stage", "INTEGER DEFAULT 0"), ("reminder_stage_on", "DATE")]}
+                                    ("reminder_hour", "INTEGER"), ("reminder_minute", "INTEGER DEFAULT 0"), ("reminder_stage", "INTEGER DEFAULT 0"), ("reminder_stage_on", "DATE")]}
     insp = inspect(engine)
     for table, cols in wanted.items():
         if not insp.has_table(table):

@@ -91,7 +91,7 @@ def reminder_input(db: Session, user: User) -> dict:
     return {"checkins": _checkins(db, user.id, region), "today": gulf.local_now(datetime.now(timezone.utc), region or "gh").date(),
             "plan_start": first[0] if first else date.today(), "segment": bdata.resolved_segment(cx, health), "region": region,
             "respect_prayer": bool(cx.get("respect_prayer", True)), "quiet_start": s.quiet_hours_start, "quiet_end": s.quiet_hours_end,
-            "state": {"mode": s.reminder_mode or "auto", "hour": s.reminder_hour, "stage": s.reminder_stage or 0, "stage_on": s.reminder_stage_on}}
+            "state": {"mode": s.reminder_mode or "auto", "hour": s.reminder_hour, "minute": s.reminder_minute or 0, "stage": s.reminder_stage or 0, "stage_on": s.reminder_stage_on}}
 
 
 @router.get("/reminder-plan")
@@ -102,22 +102,28 @@ def reminder_plan(db: Session = Depends(get_db), user: User = Depends(get_curren
     if plan["changed_stage"] is not None and plan["changed_stage"] != (s.reminder_stage or 0):       # the plan learned something: remember it
         s.reminder_stage, s.reminder_stage_on = plan["changed_stage"], inp["today"]
         db.commit()
-    plan["settings"] = {"mode": s.reminder_mode or "auto", "hour": s.reminder_hour}
+    plan["settings"] = {"mode": s.reminder_mode or "auto", "hour": s.reminder_hour,
+                        "time": ("%02d:%02d" % (s.reminder_hour, s.reminder_minute or 0)) if s.reminder_hour is not None else None}
     plan["text"] = "A small step is waiting for you."          # generic on purpose: nothing about health on a lock screen
     return plan
 
 
 class ReminderIn(BaseModel):
     mode: Literal["auto", "off", "fixed"]
-    hour: Optional[int] = Field(None, ge=0, le=23)
+    time: Optional[str] = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")      # the time the person picked, HH:MM
+    hour: Optional[int] = Field(None, ge=0, le=23)                                 # older apps send only an hour
 
 
 @router.put("/reminder-settings")
 def set_reminders(body: ReminderIn, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
-    if body.mode == "fixed" and body.hour is None:
-        raise HTTPException(422, "Choose an hour for a fixed reminder.")
+    if body.mode == "fixed" and body.time is None and body.hour is None:
+        raise HTTPException(422, "Choose a time for a fixed reminder.")
     s = _settings(db, user)
-    s.reminder_mode, s.reminder_hour = body.mode, (body.hour if body.mode == "fixed" else None)
+    s.reminder_mode = body.mode
+    if body.mode == "fixed":
+        s.reminder_hour, s.reminder_minute = (int(body.time[:2]), int(body.time[3:])) if body.time else (body.hour, 0)
+    else:
+        s.reminder_hour, s.reminder_minute = None, 0
     if body.mode == "auto":                                   # turning it back on starts the learning again
         s.reminder_stage, s.reminder_stage_on = 0, date.today()
     db.commit()
@@ -164,7 +170,8 @@ def comeback_coach(barrier: Optional[str] = None, db: Session = Depends(get_db),
 class ChooseIn(BaseModel):
     barrier: Literal["time", "tired", "forgot", "motivation", "weather", "access", "pain_sick", "stress", "craving", "other"]
     option: Literal["tiny", "retime", "swap", "buddy", "rest"]
-    when: Optional[Literal["morning", "midday", "evening"]] = None
+    time: Optional[str] = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")      # the time the person picked, HH:MM
+    when: Optional[Literal["morning", "midday", "evening"]] = None                 # older apps
 
 
 @router.post("/comeback")
@@ -179,15 +186,17 @@ def choose(body: ChooseIn, db: Session = Depends(get_db), user: User = Depends(g
     if body.option == "tiny":
         plan.level = 1
     elif body.option == "retime":
-        if not body.when:
-            raise HTTPException(422, "Choose morning, midday or evening.")
+        if not body.time and not body.when:
+            raise HTTPException(422, "Choose the time that suits you.")
+        h, m = (int(body.time[:2]), int(body.time[3:])) if body.time else (cb.TIMES[body.when], 0)
         cx = db.query(BehaviorContext).filter_by(user_id=user.id).first()
         if cx is None:
             cx = BehaviorContext(user_id=user.id)
             db.add(cx)
-        cx.preferred_time = body.when
-        s.reminder_mode, s.reminder_hour = "fixed", cb.TIMES[body.when]
-        result["reminder_hour"] = cb.TIMES[body.when]
+        cx.preferred_clock = "%02d:%02d" % (h, m)
+        cx.preferred_time = "morning" if h < 11 else "midday" if h < 16 else "evening"
+        s.reminder_mode, s.reminder_hour, s.reminder_minute = "fixed", h, m
+        result["reminder_hour"], result["reminder_time"] = h, "%02d:%02d" % (h, m)
     elif body.option == "swap":
         recs = eng.recommend_behaviors(bdata.context_for(db, user.id), {"conditions": health.get("conditions") or []}, None, [plan.behavior])
         result["suggest"] = [r["behavior"] for r in recs[:2]]

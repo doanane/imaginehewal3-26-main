@@ -21,7 +21,7 @@ BARRIER_TEXT = {
 }
 OPTIONS = {
     "tiny": {"label": "Start with a 2 minute version", "detail": "A very small step today. It counts, and it rebuilds the habit.", "applies": "Your next step shrinks to the smallest size."},
-    "retime": {"label": "Pick a time that fits better", "detail": "Choose morning, midday or evening, and your reminder moves with it.", "applies": "Your reminder time is set to the one you choose."},
+    "retime": {"label": "Pick a time that fits better", "detail": "Choose the exact time that suits you, and your reminder moves with it.", "applies": "Your reminder time is set to the one you choose."},
     "swap": {"label": "Try a different version", "detail": "An indoor, seated or shorter version, or another habit you would rather start with.", "applies": "We suggest another version or habit to start."},
     "buddy": {"label": "Ask someone to cheer you on", "detail": "A person you trust gets a kind nudge. They never see your readings.", "applies": "Opens the support options."},
     "rest": {"label": "Rest first, then come back", "detail": "Your body comes first. Your plan and progress are kept. If pain or illness lasts, speak to a clinician.", "applies": "Nothing changes; we will check in gently in a few days."},
@@ -86,7 +86,7 @@ def build(barrier: Optional[str], behavior: str, *, segment: Optional[str] = Non
     out["barrier"] = {"id": barrier, "label": BARRIER_TEXT[barrier]}
     out["options"] = [{"id": o, **OPTIONS[o], "recommended": i == 0,
                        "evidence": ("%d of %d people who chose this after this barrier checked in again within 3 days." % (shown[o]["returned"], shown[o]["n"])) if shown[o] else None,
-                       "times": TIMES if o == "retime" else None} for i, o in enumerate(order[:3])]
+                       "picker": o == "retime"} for i, o in enumerate(order[:3])]
     out["if_then"] = if_then(behavior, barrier, segment, region, ramadan)
     out["relapse_plan"] = relapse_plan(behavior)
     if barrier == "pain_sick" or safety_hold:

@@ -2,6 +2,7 @@
 
 Works fully offline (no Azure / LLM calls). All adaptation is rule-based and explainable.
 """
+import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
@@ -62,6 +63,7 @@ class SettingsUpdate(BaseModel):
 
 
 class ContextUpdate(BaseModel):
+    preferred_clock: Optional[str] = None                       # HH:MM, the time the person picked ('' clears it)
     preferred_time: Optional[str] = None
     work_pattern: Optional[str] = None
     mobility: Optional[str] = None
@@ -296,6 +298,15 @@ def get_context(db: Session = Depends(get_db), user: User = Depends(get_current_
 @router.put("/context")
 def update_context(body: ContextUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_active_user)):
     data = body.model_dump(exclude_none=True)
+    clock = data.pop("preferred_clock", None)
+    if clock is not None:
+        if clock == "":
+            data["preferred_time"] = "any"
+        else:
+            if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", clock):
+                raise HTTPException(400, "preferred_clock must look like 14:30")
+            hour = int(clock[:2])
+            data["preferred_time"] = "morning" if hour < 11 else "midday" if hour < 16 else "evening"      # the wording still uses the part of the day
     clear_segment = data.get("segment") == ""                     # "" returns to the suggested audience
     if clear_segment:
         data.pop("segment")
@@ -308,6 +319,8 @@ def update_context(body: ContextUpdate, db: Session = Depends(get_db), user: Use
         db.add(row)
     for k, v in data.items():
         setattr(row, k, v.strip() if isinstance(v, str) else v)
+    if clock is not None:
+        row.preferred_clock = clock or None
     if clear_segment:
         row.segment = None
     db.commit()

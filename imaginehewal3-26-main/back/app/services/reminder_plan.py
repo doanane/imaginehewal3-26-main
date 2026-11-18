@@ -99,7 +99,7 @@ def evaluate(inp: Dict[str, Any]) -> Dict[str, Any]:
 
     usual = usual_minute(checkins)
     if mode == "fixed" and st.get("hour") is not None:
-        target = _mins(int(st["hour"]), 0)
+        target = _mins(int(st["hour"]), int(st.get("minute") or 0))
         why.append("You chose this time yourself, so it never changes.")
     else:
         if stage >= 1 and usual is not None:

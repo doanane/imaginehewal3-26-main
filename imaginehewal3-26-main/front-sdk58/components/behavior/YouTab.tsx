@@ -6,6 +6,7 @@ import { Badge, Button, Card, TextField, T } from '../ui';
 import { Reveal } from '../ui/motion';
 import { View } from '../themed';
 import RemindersCard from './RemindersCard';
+import { TimeField } from '../TimePicker';
 import { Choice, EVIDENCE_TONE, SwitchRow, Tr } from './shared';
 
 const C = theme.COLORS;
@@ -16,7 +17,9 @@ export default function YouTab({ settings, approaches, onChange, t }: { settings
   const [ctx, setCtx] = useState<any>(null);
   const [reason, setReason] = useState('');
   const [open, setOpen] = useState<string | null>(null);
+  const [canSeed, setCanSeed] = useState(false);            // sample history exists only on servers that are not in production
 
+  useEffect(() => { api.getSystemCard().then((c: any) => setCanSeed(!!c && c.environment !== 'production')).catch(() => setCanSeed(false)); }, []);
   useEffect(() => { api.getBehaviorContext().then((c) => { setCtx(c); setReason(c.motivation_text || ''); }).catch(() => {}); }, []);
   const saveCtx = useCallback(async (patch: Record<string, unknown>) => {
     try { const c = await api.updateBehaviorContext(patch); setCtx(c); onChange(); } catch (e: any) { Alert.alert('', e?.message || ''); }
@@ -45,7 +48,10 @@ export default function YouTab({ settings, approaches, onChange, t }: { settings
             <T v="caption" color={C.textSecondary} style={{ marginTop: 6 }}>{t('habits.seg.note')}</T>
             <Choice label={t('habits.q.region')} value={ctx.region} options={['gh', 'ae'].map((id) => ({ v: id, label: t(`habits.region.${id}`) }))} onChange={(v) => saveCtx({ region: v })} />
             {ctx.region === 'ae' ? <SwitchRow label={t('habits.q.prayer')} sub={t('habits.prayer_sub')} value={!!ctx.respect_prayer} onChange={(v) => saveCtx({ respect_prayer: v })} /> : null}
-            <Choice label={t('habits.q.time')} value={ctx.preferred_time} options={opts('time', ['morning', 'midday', 'evening', 'any'])} onChange={(v) => saveCtx({ preferred_time: v })} />
+            <View style={{ marginTop: 14 }}>
+              <TimeField label={t('habits.q.time')} value={ctx.preferred_clock} placeholder={t('time.none')} onChange={(v) => saveCtx({ preferred_clock: v })} />
+              {ctx.preferred_clock ? <View style={{ marginTop: 6 }}><Button title={t('time.clear')} variant="ghost" onPress={() => saveCtx({ preferred_clock: '' })} /></View> : null}
+            </View>
             <Choice label={t('habits.q.work')} value={ctx.work_pattern} options={opts('work', ['regular', 'desk', 'shift', 'irregular', 'not_working'])} onChange={(v) => saveCtx({ work_pattern: v })} />
             <Choice label={t('habits.q.mobility')} value={ctx.mobility} options={opts('mobility', ['full', 'limited', 'wheelchair'])} onChange={(v) => saveCtx({ mobility: v })} />
             <Choice label={t('habits.q.support')} value={ctx.support} options={opts('support', ['alone', 'family', 'friend', 'workplace'])} onChange={(v) => saveCtx({ support: v })} />
@@ -114,7 +120,7 @@ export default function YouTab({ settings, approaches, onChange, t }: { settings
         <View style={{ gap: 10, marginTop: 12 }}>
           <Button title={t('habits.export')} variant="secondary" icon="download-outline" onPress={exportAll} />
           <Button title={t('habits.erase')} variant="danger" icon="trash-outline" onPress={erase} />
-          {__DEV__ ? <Button title="Load sample history (development builds only)" variant="ghost" icon="flask-outline"
+          {canSeed ? <Button title="Load sample history (test servers only)" variant="ghost" icon="flask-outline"
             onPress={async () => { try { await api.seedBehaviorDemo(); onChange(); } catch (e: any) { Alert.alert('', e?.message || ''); } }} /> : null}
         </View>
       </View>

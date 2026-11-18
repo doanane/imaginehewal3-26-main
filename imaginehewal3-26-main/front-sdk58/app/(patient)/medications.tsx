@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import { TimeList } from '../../components/TimePicker';
 import { Badge, Banner, Button, Card, Chip, EmptyState, ListRow, ProgressBar, Screen, ScreenHeader, Section, T, TextField } from '../../components/ui';
 import { Reveal } from '../../components/ui/motion';
 import { theme } from '../../constants/theme';
@@ -11,7 +12,6 @@ import { getReminderSettings, LEAD_CHOICES, refreshMedicineReminders, remindersA
 import { Ionicons, RefreshControl, View } from '../../components/themed';
 
 const C = theme.COLORS;
-const TIMES = ['06:00', '08:00', '12:00', '14:00', '18:00', '20:00', '22:00'];
 const label = (t: string) => { const [h, m] = t.split(':').map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`; };
 const TONE = { taken: 'success', skipped: 'neutral', overdue: 'danger', pending: 'info' } as const;
 
@@ -23,7 +23,7 @@ export default function Medications() {
   const [offline, setOffline] = useState(false);
   const [name, setName] = useState('');
   const [dose, setDose] = useState('');
-  const [times, setTimes] = useState<string[]>(['08:00']);
+  const [times, setTimes] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
   const [rem, setRem] = useState<ReminderSettings>({ enabled: true, leadMin: 5 });
@@ -52,7 +52,7 @@ export default function Medications() {
   const add = async () => {
     if (!name.trim() || !times.length) { Alert.alert('Add a medicine', 'Enter its name and choose at least one time.'); return; }
     setSaving(true);
-    try { await api.addMedication({ name: name.trim(), dose: dose.trim() || undefined, times }); setName(''); setDose(''); setTimes(['08:00']); setAdding(false); await load(); }
+    try { await api.addMedication({ name: name.trim(), dose: dose.trim() || undefined, times }); setName(''); setDose(''); setTimes([]); setAdding(false); await load(); }
     catch (e: any) { Alert.alert('Could not add', e.message); }
     finally { setSaving(false); }
   };
@@ -124,9 +124,7 @@ export default function Medications() {
               <TextField label="Name" value={name} onChangeText={setName} placeholder="For example Amlodipine" autoCapitalize="words" />
               <TextField label="Dose (optional)" value={dose} onChangeText={setDose} placeholder="For example 5 mg" />
               <T v="label" color={C.textSecondary} style={{ marginBottom: 8 }}>When do you take it?</T>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                {TIMES.map((t) => <Chip key={t} label={label(t)} selected={times.includes(t)} onPress={() => setTimes((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]))} />)}
-              </View>
+              <View style={{ marginBottom: 16 }}><TimeList times={times} onChange={setTimes} addLabel="Add a time" /></View>
               <Button title="Save medicine" onPress={add} loading={saving} />
               <T v="caption" color={C.textTertiary} style={{ marginTop: 10 }}>Only add what your clinician or pharmacist has told you to take.</T>
             </Card>

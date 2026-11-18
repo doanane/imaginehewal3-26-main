@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { theme } from '../../constants/theme';
 import api from '../../services/api';
 import { Badge, Button, Card, Chip, T } from '../ui';
+import { TimeField } from '../TimePicker';
 import { Reveal } from '../ui/motion';
 import { Ionicons, View } from '../themed';
 import type { Tr } from './shared';
@@ -17,7 +18,7 @@ export default function ComebackCoach({ t, onChange, onOpenSupport }: { t: Tr; o
   const [step, setStep] = useState<Step>('start');
   const [barrier, setBarrier] = useState<string | null>(null);
   const [opts, setOpts] = useState<any>(null);
-  const [when, setWhen] = useState<string | null>(null);
+  const [when, setWhen] = useState<string | null>(null);          // HH:MM, picked by the person
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const load = useCallback(() => { api.getComeback().then(setD).catch(() => setD(null)); }, []);
@@ -73,11 +74,7 @@ export default function ComebackCoach({ t, onChange, onOpenSupport }: { t: Tr; o
                 </View>
                 <T v="caption" color={C.textSecondary} style={{ marginTop: 4 }}>{o.detail}</T>
                 {o.evidence ? <T v="caption" color={C.textSecondary} style={{ marginTop: 4 }}>{o.evidence}</T> : null}
-                {o.id === 'retime' && o.times ? (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                    {Object.keys(o.times).map((k) => <Chip key={k} label={t(`cb.time.${k}`)} selected={when === k} onPress={() => setWhen(k)} />)}
-                  </View>
-                ) : null}
+                {o.id === 'retime' ? <View style={{ marginTop: 8 }}><TimeField value={when} placeholder={t('time.pick')} onChange={setWhen} /></View> : null}
                 <View style={{ marginTop: 10 }}><Button title={t('cb.choose')} variant={o.recommended ? 'primary' : 'secondary'} onPress={() => choose(o.id)} loading={busy} /></View>
               </Card>
             ))}

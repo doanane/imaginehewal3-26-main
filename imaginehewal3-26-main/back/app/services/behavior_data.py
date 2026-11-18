@@ -19,7 +19,7 @@ from app.services.emergency_service import OPEN
 
 CONTEXT_DEFAULTS = {"preferred_time": "any", "work_pattern": "regular", "mobility": "full", "support": "alone",
                     "readiness": 3, "literacy": "standard", "motivation_text": None,
-                    "segment": None, "region": "gh", "respect_prayer": True}
+                    "segment": None, "region": "gh", "respect_prayer": True, "preferred_clock": None}
 CONTEXT_CHOICES = {
     "preferred_time": ("morning", "midday", "evening", "any"),
     "work_pattern": ("regular", "desk", "shift", "irregular", "not_working"),

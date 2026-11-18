@@ -63,6 +63,7 @@ class BehaviorSettings(Base):
     share_with_doctor = Column(Boolean, default=False)       # the linked doctor sees behaviour progress only if this is on
     reminder_mode = Column(String, default="auto")           # auto (learns the time) | off | fixed (the person's own hour)
     reminder_hour = Column(Integer, nullable=True)           # only used when the mode is fixed
+    reminder_minute = Column(Integer, default=0)             # the minutes of the time the person chose
     reminder_stage = Column(Integer, default=0)              # 0 daily, 1 moved to the usual time, 2 every other day, 3 paused (it was not helping)
     reminder_stage_on = Column(Date, nullable=True)          # when the stage last changed
 
@@ -73,7 +74,8 @@ class BehaviorContext(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True)
-    preferred_time = Column(String, default="any")           # morning | midday | evening | any
+    preferred_time = Column(String, default="any")           # morning | midday | evening | any (worked out from preferred_clock when that is set)
+    preferred_clock = Column(String, nullable=True)          # the time the person picked, HH:MM
     work_pattern = Column(String, default="regular")         # regular | desk | shift | irregular | not_working
     segment = Column(String, nullable=True)                  # chronic | sedentary | young_adult | adult | older_adult (empty: suggested from profile)
     region = Column(String, default="gh")                    # gh | ae: the week, Ramadan, prayer and heat rules, emergency numbers

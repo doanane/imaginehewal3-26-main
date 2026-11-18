@@ -99,8 +99,8 @@ def test_it_learns_then_slows_then_pauses_and_the_person_can_override():
     assert early["changed_stage"] is None
     off = rp.evaluate(inp(state={"mode": "off", "stage": 0}))
     assert not off["enabled"] and off["time"] is None
-    fixed = rp.evaluate(inp(checkins=never, state={"mode": "fixed", "hour": 9, "stage": 0, "stage_on": D - timedelta(days=10)}))
-    assert fixed["time"] == "09:00" and fixed["changed_stage"] is None                                              # the person's own time is never changed
+    fixed = rp.evaluate(inp(checkins=never, state={"mode": "fixed", "hour": 14, "minute": 41, "stage": 0, "stage_on": D - timedelta(days=10)}))
+    assert fixed["time"] == "14:41" and fixed["changed_stage"] is None                                              # the person's own time is never changed
 
 
 def test_a_reminder_that_works_is_left_alone():
@@ -146,6 +146,9 @@ def test_goals_reminders_and_coach_through_the_api(env):
     r = c.get("/behavior/reminder-plan", headers=hp).json()
     assert r["enabled"] and r["time"] and r["why"] and r["frequency"] == "daily" and "health" not in r["text"].lower()
     assert c.put("/behavior/reminder-settings", headers=hp, json={"mode": "fixed"}).status_code == 422
+    picked = c.put("/behavior/reminder-settings", headers=hp, json={"mode": "fixed", "time": "14:41"}).json()
+    assert picked["time"] == "14:41" and picked["settings"]["time"] == "14:41"                                     # exactly the time the person picked
+    assert c.put("/behavior/reminder-settings", headers=hp, json={"mode": "fixed", "time": "25:99"}).status_code == 422
     fixed = c.put("/behavior/reminder-settings", headers=hp, json={"mode": "fixed", "hour": 7}).json()
     assert fixed["time"] == "07:00" and fixed["settings"]["mode"] == "fixed"
     assert not c.put("/behavior/reminder-settings", headers=hp, json={"mode": "off"}).json()["enabled"]
@@ -171,9 +174,11 @@ def test_goals_reminders_and_coach_through_the_api(env):
     co2 = c.get("/behavior/comeback?barrier=forgot", headers=hp).json()
     assert co2["options"][0]["id"] == "retime" and co2["if_then"] and co2["relapse_plan"]
     assert c.post("/behavior/comeback", headers=hp, json={"barrier": "forgot", "option": "retime"}).status_code == 422          # needs a time
-    ok = c.post("/behavior/comeback", headers=hp, json={"barrier": "forgot", "option": "retime", "when": "morning"}).json()
-    assert ok["reminder_hour"] == 8 and ok["if_then"]
-    assert c.get("/behavior/reminder-plan", headers=hp).json()["time"] == "08:00"                                                 # the coach moved the reminder
+    ok = c.post("/behavior/comeback", headers=hp, json={"barrier": "forgot", "option": "retime", "time": "07:25"}).json()
+    assert ok["reminder_time"] == "07:25" and ok["if_then"]
+    assert c.get("/behavior/reminder-plan", headers=hp).json()["time"] == "07:25"                                                 # the coach moved the reminder to the picked time
+    assert c.put("/behavior/context", headers=hp, json={"preferred_clock": "13:10"}).json()["preferred_time"] == "midday"
+    assert c.put("/behavior/context", headers=hp, json={"preferred_clock": "99:99"}).status_code == 400
     tiny = c.post("/behavior/comeback", headers=hp, json={"barrier": "tired", "option": "tiny"}).json()
     assert tiny["option"] == "tiny"
 
