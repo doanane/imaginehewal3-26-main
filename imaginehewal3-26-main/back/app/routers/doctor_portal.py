@@ -5,7 +5,7 @@ and every number comes from the same tables the patient and caregiver apps write
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -24,7 +24,8 @@ from app.models.user import User, UserProfile
 from app.realtime import hub
 from app.services.care_snapshot import aware as _aware, iso as _iso, snapshot as _snapshot
 from app.models.care_chat import DoctorMessage
-from app.services import ai_features, care_chat, clinical_analytics, push
+from app.services import ai_features, care_chat, clinical_analytics, photos, push
+from app.services.storage_service import storage_service
 from app.services.week_data import collect_week
 
 router = APIRouter(prefix="/doctor-portal", tags=["doctor_portal"])
@@ -69,7 +70,7 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
     token = create_access_token({"sub": doctor.doctor_id}, user_type="doctor", expires_delta=timedelta(hours=12))
     return {"access_token": token, "token_type": "bearer", "doctor": {
         "doctor_id": doctor.doctor_id, "full_name": doctor.full_name,
-        "specialization": doctor.specialization, "hospital": doctor.hospital}}
+        "specialization": doctor.specialization, "hospital": doctor.hospital, "photo_url": photos.doctor_photo(doctor)}}
 
 
 class ProfileIn(BaseModel):
@@ -86,13 +87,42 @@ class PasswordIn(BaseModel):
 
 def _profile(db: Session, doctor: Doctor):
     return {"doctor_id": doctor.doctor_id, "full_name": doctor.full_name, "specialization": doctor.specialization,
-            "hospital": doctor.hospital, "email": doctor.email, "member_since": _iso(doctor.created_at),
+            "hospital": doctor.hospital, "email": doctor.email, "member_since": _iso(doctor.created_at), "photo_url": photos.doctor_photo(doctor),
             "patients": db.query(UserProfile).filter(UserProfile.doctor_id == doctor.doctor_id).count()}
 
 
 @router.get("/me")
 def me(db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
     return _profile(db, doctor)
+
+
+@router.post("/me/photo")
+async def upload_my_photo(file: UploadFile = File(...), db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
+    """Save the doctor's picture to Cloudinary and remember its address on the account, so it is there at every sign-in."""
+    head = await file.read(16)
+    kind = photos.sniff(head)
+    if kind is None:
+        raise HTTPException(400, "Choose a JPG, PNG, GIF or WebP picture.")
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+    if size > photos.MAX_BYTES:
+        raise HTTPException(400, "The picture is larger than 5 MB.")
+    file.filename = f"doctor_{doctor.id}.{kind}"
+    try:
+        url = await storage_service.upload_file(file, folder="doctor_profiles")
+    except Exception:
+        raise HTTPException(502, "The picture could not be saved. Try again in a moment.")
+    doctor.profile_image_url = url
+    db.commit()
+    return {"photo_url": photos.doctor_photo(doctor)}
+
+
+@router.delete("/me/photo")
+def remove_my_photo(db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
+    doctor.profile_image_url = None
+    db.commit()
+    return {"photo_url": None}
 
 
 @router.patch("/me")
@@ -136,7 +166,7 @@ def overview(db: Session = Depends(get_db), doctor: Doctor = Depends(get_current
     count = lambda s: sum(1 for p in patients if p["group"] == s)  # noqa: E731
     return {
         "doctor": {"doctor_id": doctor.doctor_id, "full_name": doctor.full_name,
-                   "specialization": doctor.specialization, "hospital": doctor.hospital},
+                   "specialization": doctor.specialization, "hospital": doctor.hospital, "photo_url": photos.doctor_photo(doctor)},
         "stats": {"total": len(patients), "critical": count("critical"), "monitor": count("monitor"),
                   "stable": count("stable"), "healthy": count("healthy"), "no_data": count("no_data"), "active_alerts": len(events)},
         "alerts": [_sos(e, names.get(e.user_id)) for e in events],
@@ -166,6 +196,7 @@ def patient_detail(patient_id: int, db: Session = Depends(get_db),
                    doctor: Doctor = Depends(get_current_active_doctor)):
     user, profile = _owned_patient(db, doctor, patient_id)
     snap = _snapshot(db, user, profile)
+    snap["photo_url"] = photos.absolute(getattr(profile, "profile_image_url", None))
 
     since = datetime.now(timezone.utc) - timedelta(hours=24)
     readings = (db.query(VitalReading).filter(VitalReading.user_id == user.id, VitalReading.timestamp >= since)
@@ -301,7 +332,7 @@ class LinkIn(BaseModel):
 
 
 def _doctor_card(d: Optional[Doctor]):
-    return None if not d else {"doctor_id": d.doctor_id, "full_name": d.full_name, "specialization": d.specialization, "hospital": d.hospital}
+    return None if not d else {"doctor_id": d.doctor_id, "full_name": d.full_name, "specialization": d.specialization, "hospital": d.hospital, "photo_url": photos.doctor_photo(d)}
 
 
 @patient_router.get("")

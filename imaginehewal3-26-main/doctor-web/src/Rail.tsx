@@ -37,12 +37,18 @@ export default function Rail() {
             <button type="button" className="icon-btn" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={18} /></button>
           </span>
         </div>
-        <div className="cal-grid" role="grid">
+        <div className="cal-grid">
           {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((w, i) => <span key={i} className="cal-dow" aria-hidden>{w}</span>)}
           {cells.map((n, i) => {
             if (n === null) return <span key={i} />;
             const k = dayKey(new Date(month.getFullYear(), month.getMonth(), n));
-            return <span key={i} className={`cal-day ${k === today ? 'today' : ''} ${busy.has(k) ? 'busy' : ''}`} aria-label={`${n}${busy.has(k) ? ', has appointments' : ''}`}>{n}</span>;
+            const date = new Date(month.getFullYear(), month.getMonth(), n);
+            const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(n).padStart(2, '0')}`;
+            return (
+              <button key={i} type="button" className={`cal-day ${k === today ? 'today' : ''} ${busy.has(k) ? 'busy' : ''}`}
+                aria-label={`${date.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}${busy.has(k) ? ', has appointments' : ', no appointments'}. Open in the schedule`}
+                onClick={() => { window.location.hash = `#/schedule/${iso}`; }}>{n}</button>
+            );
           })}
         </div>
       </section>

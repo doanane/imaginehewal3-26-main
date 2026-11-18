@@ -56,7 +56,7 @@ export default function App() {
   if (pub) return <MotionConfig reducedMotion="user"><VerifyPage initial={decodeURIComponent(pub[1] || '')} /></MotionConfig>;
   return (
     <MotionConfig reducedMotion="user">
-      {session ? <CallProvider><Shell session={session} route={route} signOut={() => signOut(false)} onProfile={p => { const s = { ...session, doctor: { ...session.doctor, full_name: p.full_name, specialization: p.specialization, hospital: p.hospital } }; saveSession(s); setSession(s); }} /></CallProvider> : <Login notice={notice} onSignedIn={s => { setNotice(''); setSession(s); }} />}
+      {session ? <CallProvider><Shell session={session} route={route} signOut={() => signOut(false)} onProfile={p => { const s = { ...session, doctor: { ...session.doctor, full_name: p.full_name, specialization: p.specialization, hospital: p.hospital, photo_url: p.photo_url } }; saveSession(s); setSession(s); }} /></CallProvider> : <Login notice={notice} onSignedIn={s => { setNotice(''); setSession(s); }} />}
     </MotionConfig>
   );
 }
@@ -120,7 +120,7 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
   if (consult) page = <ConsultPage id={Number(consult[1])} />;
   else if (doc) page = <PrintDoc id={Number(doc[1])} />;
   else if (rx) page = <PrintRx patientId={Number(rx[1])} doctor={d} />;
-  else if (route.startsWith('#/schedule')) page = <SchedulePage overview={data} />;
+  else if (route.startsWith('#/schedule')) page = <SchedulePage overview={data} date={(route.match(/^#\/schedule\/(\d{4}-\d{2}-\d{2})/) || [])[1]} />;
   else if (route.startsWith('#/messages')) page = <MessagesPage selected={chat ? Number(chat[1]) : null} />;
   else if (route.startsWith('#/documents')) page = <DocumentsPage overview={data} />;
   else if (route.startsWith('#/panel')) page = <OverviewPage overview={data} error={error} />;

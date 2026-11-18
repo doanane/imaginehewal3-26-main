@@ -935,7 +935,7 @@ export interface CarePatientOverview {
   emergencies: { id: number; reason: string; status: string; created_at: string | null; location_url: string | null; escalated_at: string | null }[];
   doctor: { name: string; specialization: string; hospital: string } | null;
 }
-export type MyDoctor = { doctor: { doctor_id: string; full_name: string; specialization: string; hospital: string } | null };
+export type MyDoctor = { doctor: { doctor_id: string; full_name: string; specialization: string; hospital: string; photo_url?: string | null } | null };
 export const getMyDoctor = () => apiCall<MyDoctor>('/my-doctor');
 export const linkMyDoctor = (doctor_id: string) => apiCall<MyDoctor>('/my-doctor', { method: 'PUT', body: JSON.stringify({ doctor_id }) });
 export const unlinkMyDoctor = () => apiCall<MyDoctor>('/my-doctor', { method: 'DELETE' });

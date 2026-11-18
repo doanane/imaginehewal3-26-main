@@ -82,6 +82,7 @@ class UserProfile(Base):
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     full_name = Column(String)
     doctor_id = Column(String, ForeignKey("doctors.doctor_id", ondelete="SET NULL"), nullable=True)
+    profile_image_url = Column(String, nullable=True)   # Cloudinary address of the person's photo (it used to be set but never stored)
     gender = Column(String)
     age = Column(Integer)
     chronic_conditions = Column(JSON, default=list)

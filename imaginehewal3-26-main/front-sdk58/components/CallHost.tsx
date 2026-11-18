@@ -5,7 +5,8 @@ import { theme } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { calls, CallState } from '../services/calls';
 import { realtime } from '../services/realtime';
-import { Ionicons, Pressable, Text, View } from './themed';
+import { profileImageSource } from '../services/imageUrl';
+import { Image, Ionicons, Pressable, Text, View } from './themed';
 
 const C = theme.COLORS;
 
@@ -44,7 +45,9 @@ export default function CallHost() {
           {!showVideo && s.remote ? <RTCView streamURL={s.remote.toURL()} style={{ width: 1, height: 1 }} /> : null}
           {!showVideo ? (
             <View style={st.who}>
-              <View style={st.avatar}><Text style={st.initial}>{(s.name || '?').trim().charAt(0).toUpperCase()}</Text></View>
+              <View style={st.avatar}>{s.photo
+                ? <Image source={profileImageSource(s.photo) as any} style={st.photo} accessibilityLabel={`${s.name}'s picture`} />
+                : <Text style={st.initial}>{(s.name || '?').trim().charAt(0).toUpperCase()}</Text>}</View>
               <Text style={st.name} accessibilityRole="header">{s.name}</Text>
             </View>
           ) : <Text style={st.tag}>{s.name}</Text>}
@@ -77,7 +80,8 @@ export default function CallHost() {
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: '#0b0910', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24 },
   who: { alignItems: 'center', gap: 16, marginTop: 40 },
-  avatar: { width: 120, height: 120, borderRadius: 60, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 10, borderColor: 'rgba(255,93,125,0.18)' },
+  avatar: { width: 120, height: 120, borderRadius: 60, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 10, borderColor: 'rgba(255,255,255,0.14)', overflow: 'hidden' },
+  photo: { width: 100, height: 100, borderRadius: 50 },
   initial: { color: '#fff', fontSize: 46, fontWeight: '700' },
   name: { color: '#fff', fontSize: 26, fontWeight: '600', textAlign: 'center' },
   tag: { position: 'absolute', top: 70, left: 20, color: '#fff', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, overflow: 'hidden' },

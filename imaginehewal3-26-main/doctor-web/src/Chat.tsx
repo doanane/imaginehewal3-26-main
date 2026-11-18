@@ -15,7 +15,7 @@ const dayLabel = (iso: string | null) => {
 };
 
 /** Live chat with one patient. Messages arrive over the websocket the moment the patient sends them, with typing, presence and read receipts. */
-export default function ChatPanel({ patientId, name }: { patientId: number; name: string }) {
+export default function ChatPanel({ patientId, name, photo }: { patientId: number; name: string; photo?: string | null }) {
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
   const [online, setOnline] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -87,7 +87,7 @@ export default function ChatPanel({ patientId, name }: { patientId: number; name
   };
 
   const callBtn = (media: 'audio' | 'video') => (
-    <button className="btn ghost sm" disabled={!supported || !online} onClick={() => start(patientId, name, media)}
+    <button className="btn ghost sm" disabled={!supported || !online} onClick={() => start(patientId, name, media, photo)}
       aria-label={`${media === 'video' ? 'Video' : 'Voice'} call ${name}`} title={!online ? 'The patient is offline' : !supported ? 'Calls need a modern browser over HTTPS' : undefined}>
       {media === 'video' ? <Video size={16} /> : <Phone size={16} />}{media === 'video' ? 'Video' : 'Call'}
     </button>

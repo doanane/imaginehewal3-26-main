@@ -22,6 +22,7 @@ class Doctor(Base):
     email = Column(String, nullable=True)  
     hashed_password = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    profile_image_url = Column(String, nullable=True)   # Cloudinary address of the doctor's photo
     working_hours = Column(JSON, nullable=True)       # {"days": [0..6, Monday is 0], "start": "08:00", "end": "17:00", "slot_min": 30}
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

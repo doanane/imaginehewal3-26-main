@@ -1,10 +1,10 @@
 export type Group = 'critical' | 'monitor' | 'stable' | 'healthy' | 'no_data';
 export interface Vitals { heart_rate: number | null; blood_oxygen: number | null; systolic: number | null; diastolic: number | null; steps: number | null; glucose: number | null; at: string | null }
 export interface Snapshot {
-  patient_id: number; identifier: string | null; name: string; age: number | null; gender: string | null; conditions: string[];
+  patient_id: number; identifier: string | null; name: string; age: number | null; gender: string | null; conditions: string[]; photo_url?: string | null;
   vitals: Vitals; status: string; group: Group; reasons: string[]; active_alerts: number; caregivers: string[]; adherence: number | null;
 }
-export interface DoctorInfo { doctor_id: string; full_name: string; specialization: string | null; hospital: string | null }
+export interface DoctorInfo { doctor_id: string; full_name: string; specialization: string | null; hospital: string | null; photo_url?: string | null }
 export interface Emergency { id: number; patient_id: number; patient: string | null; reason: string | null; trigger: string | null; status: string; attempts: number; escalated: boolean; location_url: string | null; at: string | null; resolved_at: string | null }
 export interface Overview {
   doctor: DoctorInfo; stats: { total: number; critical: number; monitor: number; stable: number; healthy: number; no_data: number; active_alerts: number };

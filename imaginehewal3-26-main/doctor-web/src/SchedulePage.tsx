@@ -14,8 +14,9 @@ const mins = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); ret
 const label = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 /** A week at a glance. Shaded cells are outside your working hours. Click a free slot to book, click an appointment to act on it. */
-export default function SchedulePage({ overview }: { overview: Overview | null }) {
-  const [week, setWeek] = useState(() => mondayOf(new Date()));
+export default function SchedulePage({ overview, date }: { overview: Overview | null; date?: string }) {
+  const [week, setWeek] = useState(() => mondayOf(date ? new Date(`${date}T00:00:00`) : new Date()));
+  useEffect(() => { if (date) setWeek(mondayOf(new Date(`${date}T00:00:00`))); }, [date]);
   const [s, setS] = useState<Schedule | null>(null);
   const [err, setErr] = useState('');
   const [book, setBook] = useState<Date | null>(null);
@@ -61,7 +62,7 @@ export default function SchedulePage({ overview }: { overview: Overview | null }
         <div className="card sched-card">
           <div className="sched" style={{ gridTemplateColumns: '56px repeat(7, minmax(110px, 1fr))' }} role="grid" aria-label="Week schedule">
             <div className="sched-corner" />
-            {days.map(d => <div key={d.toISOString()} className={`sched-day ${d.toDateString() === today ? 'today' : ''}`} role="columnheader"><small>{d.toLocaleDateString([], { weekday: 'short' })}</small><b>{d.getDate()}</b></div>)}
+            {days.map(d => <div key={d.toISOString()} className={`sched-day ${d.toDateString() === today ? 'today' : ''} ${date && ymd(d) === date ? 'picked' : ''}`} role="columnheader"><small>{d.toLocaleDateString([], { weekday: 'short' })}</small><b>{d.getDate()}</b></div>)}
             {rows.map(m => (
               <React.Fragment key={m}>
                 <div className="sched-time">{label(m)}</div>

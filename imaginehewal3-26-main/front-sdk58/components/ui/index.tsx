@@ -18,7 +18,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { theme } from '../../constants/theme';
 import { LANGUAGES } from '../../i18n';
 import { useHomeAccessibility } from '../homeAccessibilityContext';
-import { ActivityIndicator, Ionicons, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from '../themed';
+import { profileImageSource } from '../../services/imageUrl';
+import { ActivityIndicator, Image, Ionicons, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from '../themed';
 
 const C = theme.COLORS;
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -272,12 +273,14 @@ export function ProgressBar({ value, color = C.primary }: { value: number; color
     <View style={{ width: `${pct * 100}%`, height: '100%', backgroundColor: color, borderRadius: 4 }} /></View>;
 }
 
-export function Avatar({ name, size = 44, online }: { name: string; size?: number; online?: boolean }) {
+export function Avatar({ name, size = 44, online, photo }: { name: string; size?: number; online?: boolean; photo?: string | null }) {
   const initials = (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || '?';
+  const src = profileImageSource(photo);
   return (
     <View style={{ width: size, height: size }}>
-      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: C.primary, fontWeight: '700', fontSize: size * 0.36 }}>{initials}</Text></View>
+      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        {src ? <Image source={src as any} style={{ width: size, height: size }} accessibilityLabel={`${name}'s picture`} />
+          : <Text style={{ color: C.primary, fontWeight: '700', fontSize: size * 0.36 }}>{initials}</Text>}</View>
       {online !== undefined ? <View style={[s.dot, { backgroundColor: online ? C.success : C.offline }]} /> : null}
     </View>
   );

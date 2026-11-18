@@ -9,7 +9,7 @@ import { initials } from './util';
  *  Signal frames: {type:'offer'|'answer', sdp} and {type:'candidate', candidate}. The phone app uses the same shapes. */
 type Media = 'audio' | 'video';
 type Phase = 'idle' | 'calling' | 'ringing' | 'connecting' | 'active';
-interface Call { phase: Phase; peer: number; name: string; media: Media; id: string; note?: string }
+interface Call { phase: Phase; peer: number; name: string; media: Media; id: string; note?: string; photo?: string | null }
 const IDLE: Call = { phase: 'idle', peer: 0, name: '', media: 'audio', id: '' };
 
 /** Browsers only let a page play sound after a tap. Called from the Accept / Call click, it plays a silent clip once and wakes the audio system. */
@@ -24,7 +24,7 @@ function unlockAudio() {
 
 const FALLBACK_ICE: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
 
-interface Ctx { call: Call; start: (peer: number, name: string, media: Media) => void; supported: boolean }
+interface Ctx { call: Call; start: (peer: number, name: string, media: Media, photo?: string | null) => void; supported: boolean }
 const CallCtx = createContext<Ctx>({ call: IDLE, start: () => {}, supported: false });
 export const useCalls = () => useContext(CallCtx);
 
@@ -75,7 +75,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     local.current = s; setLocalStream(s);
   };
 
-  const start = useCallback(async (peer: number, name: string, media: Media) => {
+  const start = useCallback(async (peer: number, name: string, media: Media, photo?: string | null) => {
     if (callRef.current.phase !== 'idle') return;
     unlockAudio();
     if (!realtime.up) {
@@ -86,7 +86,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const id = (crypto.randomUUID?.() || String(Date.now()));
     getIce().then(r => { ice.current = r.iceServers; }).catch(() => {});   // STUN, plus a TURN relay with short-lived credentials when the server has one
     try { await getMedia(media); } catch { set({ ...IDLE, note: 'Allow microphone' + (media === 'video' ? ' and camera' : '') + ' access to place a call.' }); return; }
-    set({ phase: 'calling', peer, name, media, id });
+    set({ phase: 'calling', peer, name, media, id, photo: photo ?? null });
     realtime.send({ type: 'call.invite', to: peer, call_id: id, media });
     ringTimer.current = window.setTimeout(() => { realtime.send({ type: 'call.end', to: peer, call_id: id }); cleanup('No answer.'); }, 45000);
   }, [cleanup]);
@@ -111,13 +111,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const offs = [
       realtime.on('call.invite', e => {
         if (callRef.current.phase !== 'idle') { realtime.send({ type: 'call.reject', to: e.from_user_id, call_id: e.call_id }); return; }
-        set({ phase: 'ringing', peer: e.from_user_id, name: e.from_name || 'Patient', media: e.media === 'video' ? 'video' : 'audio', id: e.call_id });
+        set({ phase: 'ringing', peer: e.from_user_id, name: e.from_name || 'Patient', media: e.media === 'video' ? 'video' : 'audio', id: e.call_id, photo: e.from_photo ?? null });
       }),
       realtime.on('call.accept', async e => {
         const c = callRef.current;
         if (e.call_id !== c.id || c.phase !== 'calling') return;
         window.clearTimeout(ringTimer.current);
-        set({ ...c, phase: 'connecting' });
+        set({ ...c, phase: 'connecting', photo: e.from_photo ?? c.photo });
         const p = buildPc(c.peer, c.id);
         const offer = await p.createOffer();
         await p.setLocalDescription(offer);
@@ -259,7 +259,7 @@ function CallOverlay({ call, remote, local, muted, camOff, secs, silent, onAccep
             <div className="call-body">
               {(call.media === 'audio' || !remote) && (
                 <div className="call-who">
-                  <motion.span className="call-avatar" animate={call.phase === 'ringing' || call.phase === 'calling' ? { scale: [1, 1.06, 1] } : {}} transition={{ repeat: Infinity, duration: 1.6 }}>{initials(call.name)}</motion.span>
+                  <motion.span className="call-avatar" animate={call.phase === 'ringing' || call.phase === 'calling' ? { scale: [1, 1.06, 1] } : {}} transition={{ repeat: Infinity, duration: 1.6 }}>{call.photo ? <img src={call.photo} alt="" /> : initials(call.name)}</motion.span>
                   <b>{call.name}</b>
                 </div>
               )}

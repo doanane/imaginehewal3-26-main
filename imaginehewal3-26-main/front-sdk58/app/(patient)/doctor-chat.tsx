@@ -16,7 +16,7 @@ const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([]
 export default function DoctorChat() {
   const router = useRouter();
   const [msgs, setMsgs] = useState<DoctorChatMessage[]>([]);
-  const [doctor, setDoctor] = useState<{ full_name: string } | null>(null);
+  const [doctor, setDoctor] = useState<{ full_name: string; photo_url?: string | null } | null>(null);
   const [peer, setPeer] = useState(0);
   const [online, setOnline] = useState<boolean | undefined>(undefined);
   const [typing, setTyping] = useState(false);
@@ -92,14 +92,14 @@ export default function DoctorChat() {
         header={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingBottom: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: C.separator }}>
             <IconButton icon="chevron-back" label="Back" onPress={() => router.back()} />
-            <Avatar name={name} size={40} online={online} />
+            <Avatar name={name} size={40} online={online} photo={doctor?.photo_url} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <T v="heading" numberOfLines={1}>{name}</T>
               <T v="caption" color={typing ? C.primary : C.textSecondary}>{typing ? 'typing...' : online === undefined ? '' : online ? 'Online' : 'Offline'}</T>
             </View>
             {canCall ? <>
-              <IconButton icon="call-outline" label={`Voice call ${name}`} onPress={() => calls.start(peer, name, 'audio')} />
-              <IconButton icon="videocam-outline" label={`Video call ${name}`} onPress={() => calls.start(peer, name, 'video')} />
+              <IconButton icon="call-outline" label={`Voice call ${name}`} onPress={() => calls.start(peer, name, 'audio', doctor?.photo_url)} />
+              <IconButton icon="videocam-outline" label={`Video call ${name}`} onPress={() => calls.start(peer, name, 'video', doctor?.photo_url)} />
             </> : null}
           </View>}
         footer={<Composer value={text} onChange={onChange} onSend={send} sending={sending} safeBottom placeholder="Write to your doctor" maxLength={1000} />}

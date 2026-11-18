@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BadgeCheck, Building2, CalendarClock, KeyRound, Mail, Save, Stethoscope, Users } from 'lucide-react';
-import { changePassword, getAvailability, getMe, Hours, Profile, setAvailability, updateMe } from './api';
-import { Skeleton } from './ui';
+import { changePassword, getAvailability, getMe, Hours, Profile, removePhoto, setAvailability, updateMe, uploadPhoto } from './api';
+import { Avatar, Skeleton } from './ui';
 import { initials } from './util';
 
 type Note = { ok: boolean; text: string } | null;
@@ -16,6 +16,8 @@ export default function ProfilePage({ onSaved }: { onSaved: (p: Profile) => void
   const [pw, setPw] = useState({ cur: '', next: '', again: '' });
   const [pwNote, setPwNote] = useState<Note>(null);
   const [pwBusy, setPwBusy] = useState(false);
+  const [pic, setPic] = useState<Note>(null);
+  const [picBusy, setPicBusy] = useState(false);
 
   useEffect(() => {
     getMe().then(m => { setP(m); setF({ full_name: m.full_name || '', specialization: m.specialization || '', hospital: m.hospital || '', email: m.email || '' }); }).catch(e => setErr((e as Error).message));
@@ -27,6 +29,18 @@ export default function ProfilePage({ onSaved }: { onSaved: (p: Profile) => void
     e.preventDefault(); setBusy(true); setNote(null);
     try { const m = await updateMe(f); setP(m); onSaved(m); setNote({ ok: true, text: 'Saved. Patients see the new details straight away.' }); }
     catch (x) { setNote({ ok: false, text: (x as Error).message }); } finally { setBusy(false); }
+  };
+  const choosePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setPic({ ok: false, text: 'The picture is larger than 5 MB.' }); return; }
+    setPicBusy(true); setPic(null);
+    try { const r = await uploadPhoto(file); const m = { ...p, photo_url: r.photo_url }; setP(m); onSaved(m); setPic({ ok: true, text: 'Saved. Your picture stays on your account.' }); }
+    catch (x) { setPic({ ok: false, text: (x as Error).message }); } finally { setPicBusy(false); }
+  };
+  const dropPhoto = async () => {
+    setPicBusy(true); setPic(null);
+    try { await removePhoto(); const m = { ...p, photo_url: null }; setP(m); onSaved(m); } catch (x) { setPic({ ok: false, text: (x as Error).message }); } finally { setPicBusy(false); }
   };
   const savePw = async (e: React.FormEvent) => {
     e.preventDefault(); setPwNote(null);
@@ -41,7 +55,14 @@ export default function ProfilePage({ onSaved }: { onSaved: (p: Profile) => void
     <>
       <header className="page-head"><div><h1>My profile</h1><p>How patients see you, and how you sign in.</p></div></header>
       <motion.section className="card profile-hero" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <span className="avatar xl">{initials(p.full_name)}</span>
+        <div className="photo-edit">
+          <Avatar name={p.full_name} photo={p.photo_url} className="xl" />
+          <label className={`btn ghost sm ${picBusy ? 'disabled' : ''}`}>{picBusy ? 'Saving' : p.photo_url ? 'Change picture' : 'Add a picture'}
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={picBusy} onChange={choosePhoto} />
+          </label>
+          {p.photo_url && <button type="button" className="btn ghost sm" disabled={picBusy} onClick={dropPhoto}>Remove</button>}
+          {pic && <small role="status" className={pic.ok ? 'ok-text' : 'err-text'}>{pic.text}</small>}
+        </div>
         <div className="profile-hero-id">
           <h2>{p.full_name}</h2>
           <p>{[p.specialization, p.hospital].filter(Boolean).join(', ') || 'No specialty added yet'}</p>

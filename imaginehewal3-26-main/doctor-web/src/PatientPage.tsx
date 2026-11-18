@@ -10,7 +10,7 @@ import HabitsTab from './HabitsTab';
 import { PatientLoop } from './AgentPage';
 import { AdherenceGrid, Bars, Gauge, TrendChart } from './Charts';
 import type { Analytics, Brief, Detail, Finding, MetricBlock, Overview } from './types';
-import { Badge, CountUp, Empty, Segmented, Skeleton, Tilt } from './ui';
+import { Avatar, Badge, CountUp, Empty, Segmented, Skeleton, Tilt } from './ui';
 import { ago, bpText, initials, NA, safeMap, shortDay, show, signed, SOS_LABEL, usePolling, when } from './util';
 
 type Tab = 'summary' | 'trends' | 'medication' | 'careplan' | 'visits' | 'habits' | 'agent' | 'records';
@@ -42,7 +42,7 @@ export default function PatientPage({ id, overview }: { id: number; overview: Ov
       {detail.error && <div className="alert-box soft" role="status">Could not refresh ({detail.error}). Showing the last data.</div>}
 
       <section className="card hero">
-        <span className={`avatar xl ${p.group}`}>{initials(p.name)}</span>
+        <Avatar name={p.name} photo={p.photo_url} className={`xl ${p.group}`} />
         <div className="hero-main">
           <h1>{p.name} <Badge group={p.group} /></h1>
           <p className="meta">{[p.age ? `${p.age} years` : null, p.gender, p.identifier, d?.profile.weight ? `${d.profile.weight} kg` : null, d?.profile.height ? `${d.profile.height} cm` : null].filter(Boolean).join(', ')}</p>
@@ -121,7 +121,7 @@ function Summary({ id, a, err, d, v, adherence }: { id: number; a: Analytics | n
         <div className="stack">
           {d && d.emergencies.length > 0 && <Emergencies d={d} />}
           <Brief id={id} />
-          <ChatPanel patientId={id} name={d?.patient.name || ''} />
+          <ChatPanel patientId={id} name={d?.patient.name || ''} photo={d?.patient.photo_url} />
         </div>
       </div>
     </>

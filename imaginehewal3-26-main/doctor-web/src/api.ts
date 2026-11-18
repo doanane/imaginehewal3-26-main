@@ -13,14 +13,14 @@ export function saveSession(s: Session | null) {
 let onExpired: () => void = () => {};
 export const setExpiredHandler = (f: () => void) => { onExpired = f; };
 
-async function call<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
+async function call<T>(path: string, opts: { method?: string; body?: unknown; form?: FormData } = {}): Promise<T> {
   const s = loadSession();
   const headers: Record<string, string> = { Accept: 'application/json', 'ngrok-skip-browser-warning': 'true' };
   if (opts.body) headers['Content-Type'] = 'application/json';
   if (s) headers.Authorization = `Bearer ${s.token}`;
   let r: Response;
   try {
-    r = await fetch(path.startsWith('/rtc') || path.startsWith('/auth/') || path.startsWith('/agent/story') ? path : `/doctor-portal${path}`, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    r = await fetch(path.startsWith('/rtc') || path.startsWith('/auth/') || path.startsWith('/agent/story') ? path : `/doctor-portal${path}`, { method: opts.method || 'GET', headers, body: opts.form ?? (opts.body ? JSON.stringify(opts.body) : undefined) });
   } catch {
     throw new Error('Cannot reach the server. Check the connection.');
   }
@@ -48,9 +48,11 @@ export const postThread = (id: number, message: string) => call<ChatMessage>(`/p
 export const readThread = (id: number) => call<{ read: number }>(`/patients/${id}/thread/read`, { method: 'POST' });
 export const getInbox = () => call<{ unread: Record<string, number>; total: number }>('/inbox');
 
-export interface Profile { doctor_id: string; full_name: string; specialization: string | null; hospital: string | null; email: string | null; member_since: string | null; patients: number }
+export interface Profile { doctor_id: string; full_name: string; specialization: string | null; hospital: string | null; email: string | null; member_since: string | null; patients: number; photo_url?: string | null }
 export const getMe = () => call<Profile>('/me');
 export const updateMe = (body: Partial<Pick<Profile, 'full_name' | 'specialization' | 'hospital' | 'email'>>) => call<Profile>('/me', { method: 'PATCH', body });
+export const uploadPhoto = (file: File) => { const form = new FormData(); form.append('file', file); return call<{ photo_url: string | null }>('/me/photo', { method: 'POST', form }); };
+export const removePhoto = () => call<{ photo_url: string | null }>('/me/photo', { method: 'DELETE' });
 export const changePassword = (current_password: string, new_password: string) => call<{ ok: boolean }>('/me/password', { method: 'POST', body: { current_password, new_password } });
 
 export type ApptStatus = 'requested' | 'confirmed' | 'declined' | 'cancelled' | 'completed';

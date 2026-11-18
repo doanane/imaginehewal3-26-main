@@ -57,6 +57,18 @@ def _identity(token: str):
         db.close()
 
 
+def _photo(key: int):
+    """The picture of whoever is calling (doctor or user), or None."""
+    from app.services import photos
+    db = SessionLocal()
+    try:
+        if key < 0:
+            return photos.doctor_photo(db.query(Doctor).filter(Doctor.id == -key).first())
+        return photos.user_photo(db, key)
+    finally:
+        db.close()
+
+
 def _contacts(key: int) -> set:
     """Who this connection may talk to: approved caregiver links, and the patient/doctor link."""
     db = SessionLocal()
@@ -161,6 +173,8 @@ async def ws_endpoint(websocket: WebSocket):
                 if not call_id:
                     continue
                 out = {"type": kind, "call_id": call_id, "from_user_id": user_id, "from_name": my_name, "from_role": my_role}
+                if kind in ("call.invite", "call.accept"):
+                    out["from_photo"] = await asyncio.to_thread(_photo, user_id)
                 if kind == "call.invite":
                     out["media"] = data.get("media") if data.get("media") in CALL_KINDS else "audio"
                     if _in_call.get(to) or _in_call.get(user_id):

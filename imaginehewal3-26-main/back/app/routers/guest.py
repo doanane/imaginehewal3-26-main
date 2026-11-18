@@ -50,7 +50,7 @@ def guest_login(body: GuestIn, request: Request, db: Session = Depends(get_db)):
     if body.role == "doctor":
         token = create_access_token({"sub": doctor.doctor_id, "guest": True}, user_type="doctor", expires_delta=life)
         return {"access_token": token, "token_type": "bearer", "is_guest": True, "doctor": {
-            "doctor_id": doctor.doctor_id, "full_name": doctor.full_name, "specialization": doctor.specialization, "hospital": doctor.hospital}}
+            "doctor_id": doctor.doctor_id, "full_name": doctor.full_name, "specialization": doctor.specialization, "hospital": doctor.hospital, "photo_url": None}}
     token = create_access_token({"sub": str(user.id), "type": "patient", "guest": True}, user_type="patient", expires_delta=life)
     refresh = secrets.token_urlsafe(32)
     db.add(RefreshToken(user_id=user.id, token=refresh, expires_at=datetime.utcnow() + life))

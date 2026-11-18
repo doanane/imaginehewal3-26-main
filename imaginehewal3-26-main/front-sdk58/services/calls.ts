@@ -11,9 +11,9 @@ import { startRinging, stopRinging, useCallAudioMode } from './callAudio';
 
 export type CallMedia = 'audio' | 'video';
 export type CallPhase = 'idle' | 'calling' | 'ringing' | 'connecting' | 'active';
-export interface CallState { phase: CallPhase; peer: number; name: string; media: CallMedia; id: string; note?: string; muted: boolean; camOff: boolean; local: any; remote: any; sending: boolean; receiving: boolean }
+export interface CallState { phase: CallPhase; peer: number; name: string; media: CallMedia; id: string; photo: string | null; note?: string; muted: boolean; camOff: boolean; local: any; remote: any; sending: boolean; receiving: boolean }
 
-const IDLE: CallState = { phase: 'idle', peer: 0, name: '', media: 'audio', id: '', muted: false, camOff: false, local: null, remote: null, sending: false, receiving: false };
+const IDLE: CallState = { phase: 'idle', peer: 0, name: '', media: 'audio', id: '', photo: null, muted: false, camOff: false, local: null, remote: null, sending: false, receiving: false };
 let iceServers: any[] = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 let rtc: any | null | undefined;
@@ -57,7 +57,7 @@ class Calls {
     this.wired = true;
     realtime.on('call.invite', (e) => {
       if (this.state.phase !== 'idle') { realtime.send({ type: 'call.reject', to: e.from_user_id, call_id: e.call_id }); return; }
-      this.set({ ...IDLE, phase: 'ringing', peer: e.from_user_id, name: e.from_name || 'Care team', media: e.media === 'video' ? 'video' : 'audio', id: e.call_id });
+      this.set({ ...IDLE, phase: 'ringing', peer: e.from_user_id, name: e.from_name || 'Care team', media: e.media === 'video' ? 'video' : 'audio', id: e.call_id, photo: e.from_photo ?? null });
       startRinging();
     });
     // the same person answered or declined on another device of theirs
@@ -65,7 +65,7 @@ class Calls {
     realtime.on('call.accept', async (e) => {
       if (e.call_id !== this.state.id || this.state.phase !== 'calling') return;
       if (this.ring) clearTimeout(this.ring);
-      this.set({ phase: 'connecting' });
+      this.set({ phase: 'connecting', photo: e.from_photo ?? this.state.photo });
       const pc = this.build();
       const offer = await pc.createOffer({});
       await pc.setLocalDescription(offer);
@@ -142,7 +142,7 @@ class Calls {
     return pc;
   }
 
-  async start(peer: number, name: string, media: CallMedia) {
+  async start(peer: number, name: string, media: CallMedia, photo?: string | null) {
     if (!this.available || this.state.phase !== 'idle') return;
     if (!realtime.connected) {
       this.flash('Connecting to the server...');
@@ -150,7 +150,7 @@ class Calls {
     }
     api.getIceServers().then((r) => { iceServers = r.iceServers; }).catch(() => {});   // STUN plus a TURN relay when the server has one
     const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-    this.set({ ...IDLE, peer, name, media, id });
+    this.set({ ...IDLE, peer, name, media, id, photo: photo ?? null });
     try { await this.media(media); } catch { this.flash('Allow microphone' + (media === 'video' ? ' and camera' : '') + ' access in Settings to place a call.'); return; }
     this.set({ phase: 'calling' });
     realtime.send({ type: 'call.invite', to: peer, call_id: id, media });

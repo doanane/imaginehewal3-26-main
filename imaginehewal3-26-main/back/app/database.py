@@ -156,7 +156,8 @@ def create_tables(preserve_data: bool = True):
 def _ensure_columns():
     """create_all never alters existing tables, so add columns introduced after a database was first created."""
     from sqlalchemy import inspect, text
-    wanted = {"doctors": [("hashed_password", "VARCHAR"), ("working_hours", "JSON")],
+    wanted = {"user_profiles": [("profile_image_url", "VARCHAR")],
+              "doctors": [("hashed_password", "VARCHAR"), ("working_hours", "JSON"), ("profile_image_url", "VARCHAR")],
               "community_posts": [("group_key", "VARCHAR"), ("image_urls", "JSON")],
               "community_reviews": [("updated_at", "TIMESTAMP")],
               "health_data": [("active_minutes", "INTEGER"), ("distance_m", "INTEGER"), ("steps_source", "VARCHAR")],

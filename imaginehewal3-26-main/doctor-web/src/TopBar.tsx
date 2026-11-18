@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, ChevronDown, LogOut, Menu, Search, UserCog } from 'lucide-react';
 import type { DoctorInfo } from './types';
 import { ThemeToggle } from './theme';
+import { Avatar } from './ui';
 import { initials } from './util';
 
 /** Top right corner: who is signed in, with a menu for the profile, the colour theme and signing out. */
@@ -32,14 +33,14 @@ export default function TopBar({ doctor, signOut, notes = [], onMenu, menuOpen =
       <ThemeToggle />
       <div className="profile-menu" ref={box}>
         <button className="profile-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}>
-          <span className="avatar">{initials(doctor.full_name)}</span>
+          <Avatar name={doctor.full_name} photo={doctor.photo_url} />
           <span className="profile-name"><b>{doctor.full_name}</b><small>{doctor.doctor_id}</small></span>
           <ChevronDown size={16} className={open ? 'flip' : ''} />
         </button>
         <AnimatePresence>
           {open && (
             <motion.div className="menu" role="menu" initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.16 }}>
-              <div className="menu-head"><span className="avatar lg">{initials(doctor.full_name)}</span><div><b>{doctor.full_name}</b><small>{sub || 'Add your specialty in your profile'}</small><small>Doctor ID {doctor.doctor_id}</small></div></div>
+              <div className="menu-head"><Avatar name={doctor.full_name} photo={doctor.photo_url} className="lg" /><div><b>{doctor.full_name}</b><small>{sub || 'Add your specialty in your profile'}</small><small>Doctor ID {doctor.doctor_id}</small></div></div>
               <a role="menuitem" className="menu-item" href="#/profile"><UserCog size={17} />My profile and password</a>
               <button role="menuitem" className="menu-item danger" onClick={signOut}><LogOut size={17} />Sign out</button>
             </motion.div>

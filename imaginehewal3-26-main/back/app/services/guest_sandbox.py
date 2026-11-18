@@ -27,7 +27,7 @@ _last_built = 0.0
 # what a guest may not do: anything that reaches a real person, a real phone, money, or the account itself
 _BLOCKED = re.compile(
     r"^/(auth/(change-password|forgot-password|reset-password|resend-verification|delete)|users/(delete|change)|privacy|push/|emergency|payment|huawei|"
-    r"caregivers/(invite|link|request)|my-doctor/(link|requests)|doctor-portal/link-requests|sms|admin|superadmin)", re.I)
+    r"caregivers/(invite|link|request)|my-doctor/(link|requests)|doctor-portal/link-requests|doctor-portal/me/photo|sms|admin|superadmin)", re.I)
 
 
 def is_guest_email(email: str | None) -> bool:

@@ -8,6 +8,7 @@ const mockSpeak = jest.fn();
 const mockUpdate = jest.fn((_s?: unknown) => Promise.resolve({ settings: {} }));
 const mockGet = jest.fn(() => Promise.resolve({ settings: {} }));
 
+jest.mock('../../services/imageUrl', () => ({ profileImageSource: () => null }));
 jest.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 7 } }) }));
 jest.mock('../../services/api', () => ({
   __esModule: true,

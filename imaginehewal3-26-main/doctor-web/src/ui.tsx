@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
-import { GROUP_LABEL } from './util';
+import { GROUP_LABEL, initials } from './util';
 
 /** Card that leans toward the pointer in 3D and lifts a little. Disabled for reduced-motion users and on touch. */
 export function Tilt({ children, className = '', max = 7 }: { children: React.ReactNode; className?: string; max?: number }) {
@@ -68,4 +68,13 @@ export const Skeleton = ({ h = 16, w = '100%' }: { h?: number; w?: number | stri
 
 export function Empty({ icon, title, children }: { icon: React.ReactNode; title: string; children?: React.ReactNode }) {
   return <div className="empty"><div className="empty-ic">{icon}</div><b>{title}</b>{children && <p>{children}</p>}</div>;
+}
+
+
+/** A person's picture when they have one (and it loads), otherwise their initials. */
+export function Avatar({ name, photo, className = '' }: { name: string; photo?: string | null; className?: string }) {
+  const [bad, setBad] = useState(false);
+  useEffect(() => { setBad(false); }, [photo]);
+  if (photo && !bad) return <img className={`avatar photo ${className}`} src={photo} alt="" onError={() => setBad(true)} />;
+  return <span className={`avatar ${className}`} aria-hidden>{initials(name)}</span>;
 }
