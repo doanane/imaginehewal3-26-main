@@ -6,6 +6,7 @@ import {
 } from '../../../components/ui';
 import { QuickTile, useQuickTileWidth } from '../../../components/ui/QuickTile';
 import { PressScale, ProgressRing, Pulse } from '../../../components/ui/motion';
+import { Glass, GlassBackdrop, GlassDisc, GlassPill } from '../../../components/ui/Glass';
 import { BARRIERS, BEHAVIORS, EMERGENCY_NUMBER } from '../../../constants/behavior';
 import { QUICK } from '../../../constants/quickActions';
 import { theme } from '../../../constants/theme';
@@ -47,11 +48,17 @@ function scoreLabel(score: number | null): { title: string; tone: string } {
 
 function HeroChip({ icon, text, pulse }: { icon: IconName; text: string; pulse?: boolean }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 }}>
-      <Pulse active={!!pulse}><Ionicons name={icon} size={15} color="#fff" /></Pulse>
-      <T v="label" color="#fff">{text}</T>
-    </View>
+    <GlassPill>
+      <Pulse active={!!pulse}><Ionicons name={icon} size={15} color={C.primary} /></Pulse>
+      <T v="label" color={C.primaryDark}>{text}</T>
+    </GlassPill>
   );
+}
+
+/** Cards on Home are glass. A card with a tone (a warning, a danger notice) keeps its plain, solid look so it cannot be missed. */
+function GCard({ children, style, onPress, tone }: { children: React.ReactNode; style?: any; onPress?: () => void; tone?: 'default' | 'soft' | 'danger' }) {
+  if (tone) return <Card tone={tone} style={style} onPress={onPress}>{children}</Card>;
+  return <Glass radius={22} onPress={onPress} style={[{ padding: 16 }, style]}>{children}</Glass>;
 }
 
 function ActionCard({ item, onCheckIn }: { item: any; onCheckIn: (id: number, body: any) => Promise<any> }) {
@@ -73,7 +80,7 @@ function ActionCard({ item, onCheckIn }: { item: any; onCheckIn: (id: number, bo
   };
 
   return (
-    <Card style={{ marginBottom: 12 }}>
+    <GCard style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
@@ -111,7 +118,7 @@ function ActionCard({ item, onCheckIn }: { item: any; onCheckIn: (id: number, bo
           </View>
         </View>
       ) : null}
-    </Card>
+    </GCard>
   );
 }
 
@@ -237,7 +244,9 @@ export default function Today() {
         : null;
 
   return (
-    <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); api.invalidateApiCache(); load(); }} tintColor={C.primary} />}
+    <View style={{ flex: 1, backgroundColor: C.background }}>
+    <GlassBackdrop />
+    <Screen bg="transparent" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); api.invalidateApiCache(); load(); }} tintColor={C.primary} />}
       contentStyle={{ paddingBottom: 120 }}>
       {/* Header: greeting on the left, notifications and profile at the top right */}
       <Reveal index={0}>
@@ -265,23 +274,24 @@ export default function Today() {
 
       {/* Today's goals: one flat card with the ring, and the figures behind it */}
       <Reveal index={1}>
-        <View accessible accessibilityLabel={`Today's goals. ${label.title}. ${score != null ? Math.round(score) + ' percent of goals met' : 'No score yet'}`}
-          style={{ borderRadius: 20, backgroundColor: C.primary, padding: 20 }}>
+        <Glass tone="teal" radius={28} label={`Today's goals. ${label.title}. ${score != null ? Math.round(score) + ' percent of goals met' : 'No score yet'}`} style={{ padding: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <T v="label" color="rgba(255,255,255,0.85)">Today's goals</T>
-              <T v="title" color="#fff" style={{ fontSize: 26, lineHeight: 32, marginTop: 4 }}>{label.title}</T>
-              <T v="caption" color="rgba(255,255,255,0.92)" style={{ marginTop: 4 }}>{label.tone}</T>
+              <T v="label" color={C.textSecondary}>Today's goals</T>
+              <T v="title" color={C.textPrimary} style={{ fontSize: 26, lineHeight: 32, marginTop: 4 }}>{label.title}</T>
+              <T v="caption" color={C.textSecondary} style={{ marginTop: 4 }}>{label.tone}</T>
               {trend != null && score != null ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
-                  <Ionicons name={trend >= 0 ? 'trending-up' : 'trending-down'} size={16} color="#fff" />
-                  <T v="label" color="#fff">{trend >= 0 ? '+' : ''}{Math.round(trend)}% this week</T>
+                  <Ionicons name={trend >= 0 ? 'trending-up' : 'trending-down'} size={16} color={C.primary} />
+                  <T v="label" color={C.primary}>{trend >= 0 ? '+' : ''}{Math.round(trend)}% this week</T>
                 </View>) : null}
             </View>
-            <ProgressRing value={score ?? 0} size={124} stroke={11}>
-              <T v="display" color="#fff" style={{ fontSize: 30, lineHeight: 36 }}>{score != null ? `${Math.round(score)}%` : '--'}</T>
-              <T v="caption" color="rgba(255,255,255,0.88)" numberOfLines={1} style={{ marginTop: -4, fontSize: 13 }}>of goals met</T>
-            </ProgressRing>
+            <GlassDisc size={136}>
+              <ProgressRing value={score ?? 0} size={124} stroke={11} color={C.primary} track="rgba(11,110,110,0.16)">
+                <T v="display" color={C.textPrimary} style={{ fontSize: 30, lineHeight: 36 }}>{score != null ? `${Math.round(score)}%` : '--'}</T>
+                <T v="caption" color={C.textSecondary} numberOfLines={1} style={{ marginTop: -4, fontSize: 13 }}>of goals met</T>
+              </ProgressRing>
+            </GlassDisc>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
             {hr ? <HeroChip icon="heart" text={`${hr} bpm${live?.is_live ? ' live' : ''}`} pulse={!!live?.is_live} /> : null}
@@ -291,13 +301,13 @@ export default function Today() {
             {bp ? <HeroChip icon="pulse" text={`${bp} mmHg`} /> : null}
             {healthKit ? <HeroChip icon="fitness" text="Apple Health synced" /> : null}
           </View>
-        </View>
+        </Glass>
       </Reveal>
 
       {/* The next visit with the person's doctor */}
       {appt ? (
         <Reveal index={2} style={{ marginTop: 16 }}>
-          <Card>
+          <GCard>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <T v="label" color={C.textSecondary}>Next appointment</T>
               <T v="label" color={C.primary}>{(() => { const d = Math.ceil((Date.parse(appt.starts_at) - Date.now()) / 86400e3); return d <= 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`; })()}</T>
@@ -314,18 +324,18 @@ export default function Today() {
               <Button title="View details" onPress={() => router.push('/(patient)/doctor-appointments' as any)} style={{ flex: 1 }} />
               <Button title="Message" variant="secondary" onPress={() => router.push('/(patient)/doctor-chat' as any)} style={{ flex: 1 }} />
             </View>
-          </Card>
+          </GCard>
         </Reveal>
       ) : null}
 
       {/* Tip for today, written by AI for this person; the same tip all day */}
       {tip ? (
         <Reveal index={2} style={{ marginTop: 16 }}>
-          <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: C.borderLight }} accessible accessibilityLabel={`Tip for today. ${tip.text}`}>
+          <Glass radius={22} style={{ padding: 16 }} label={`Tip for today. ${tip.text}`}>
             <T v="label" color={C.textSecondary}>Tip for today{tip.ai ? ', written with AI' : ''}</T>
             <T v="body" style={{ marginTop: 6, lineHeight: 24 }}>{tip.text}</T>
             <T v="caption" color={C.textTertiary} style={{ marginTop: 8 }}>General guidance, not a diagnosis. A new tip arrives every day.</T>
-          </View>
+          </Glass>
         </Reveal>
       ) : null}
 
@@ -350,7 +360,7 @@ export default function Today() {
         <Reveal index={3} style={{ marginTop: 16 }}>
           <Section title="Risk alerts">
             {dash.risk_alerts.map((risk) => (
-              <Card key={risk.code} tone={risk.severity === 'critical' ? 'danger' : 'soft'} style={{ marginBottom: 10 }}>
+              <GCard key={risk.code} tone={risk.severity === 'critical' ? 'danger' : 'soft'} style={{ marginBottom: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
                   <Ionicons
                     name={risk.severity === 'critical' ? 'warning' : 'alert-circle-outline'}
@@ -365,7 +375,7 @@ export default function Today() {
                     </T>
                   </View>
                 </View>
-              </Card>
+              </GCard>
             ))}
           </Section>
         </Reveal>
@@ -375,7 +385,7 @@ export default function Today() {
         <Reveal index={4} style={{ marginTop: 8 }}>
           <Section title="Your plan for today">
             {dash.personalized_recommendations.map((recommendation) => (
-              <Card key={recommendation.title} style={{ marginBottom: 10 }}>
+              <GCard key={recommendation.title} style={{ marginBottom: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
                   <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
                     <Ionicons name="sparkles-outline" size={20} color={C.primary} />
@@ -388,7 +398,7 @@ export default function Today() {
                     </T>
                   </View>
                 </View>
-              </Card>
+              </GCard>
             ))}
           </Section>
         </Reveal>
@@ -413,7 +423,7 @@ export default function Today() {
       <Reveal index={5}>
         <Section title="Today's activity" action="Open" onAction={() => router.push('/(patient)/activity' as any)}>
           <PressScale label="Open activity" onPress={() => router.push('/(patient)/activity' as any)}>
-            <Card>
+            <GCard>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <ActivityRings size={110} steps={act?.rings.steps ?? { value: 0, goal: 8000 }} calories={act?.rings.calories ?? { value: 0, goal: 400 }} minutes={act?.rings.minutes ?? { value: 0, goal: 30 }} />
                 <View style={{ flex: 1 }}>
@@ -423,12 +433,12 @@ export default function Today() {
                   {act?.streak_days ? <T v="label" color="#D9701A" style={{ marginTop: 6 }}>{act.streak_days}-day streak</T> : null}
                 </View>
               </View>
-            </Card>
+            </GCard>
           </PressScale>
           <View style={{ marginTop: 10 }}>
-            <Card style={{ paddingVertical: 4 }}>
+            <GCard style={{ paddingVertical: 4 }}>
               <ListRow icon="trophy-outline" title="Leaderboard" subtitle={rank ? `You are ${rank.rank}${['th', 'st', 'nd', 'rd'][rank.rank % 100 > 10 && rank.rank % 100 < 14 ? 0 : Math.min(rank.rank % 10, 4) % 4]} of ${rank.of} today` : 'See how you rank today. Joining is optional.'} onPress={() => router.push('/(patient)/leaderboard' as any)} />
-            </Card>
+            </GCard>
           </View>
         </Section>
       </Reveal>
@@ -437,16 +447,16 @@ export default function Today() {
       <Reveal index={4}>
         <Section title="Your step for today" action="All habits" onAction={() => router.push('/(patient)/behavior' as any)}>
           {error ? <View style={{ marginBottom: 12 }}><Banner tone="danger" text={error} action="Try again" onAction={load} /></View> : null}
-          {loading ? <Card><Skeleton height={20} width="60%" /><Skeleton height={14} style={{ marginTop: 12 }} /><Skeleton height={48} style={{ marginTop: 16 }} /></Card>
+          {loading ? <GCard><Skeleton height={20} width="60%" /><Skeleton height={14} style={{ marginTop: 12 }} /><Skeleton height={48} style={{ marginTop: 16 }} /></GCard>
             : items.length === 0 ? (
-              <Card>
+              <GCard>
                 <T v="bodyStrong">Choose one thing to work on</T>
                 <T v="caption" color={C.textSecondary} style={{ marginTop: 4, marginBottom: 12 }}>
                   You will get one small step each day. It adapts to how your week is going, and a missed day never resets your progress.</T>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {Object.entries(BEHAVIORS).map(([k, b]) => <Chip key={k} label={b.label} icon={b.icon} onPress={() => startPlan(k)} />)}
                 </View>
-              </Card>
+              </GCard>
             ) : items.map((it) => <ActionCard key={it.action.id} item={it} onCheckIn={checkIn} />)}
         </Section>
       </Reveal>
@@ -461,16 +471,16 @@ export default function Today() {
       {wbDue ? (
         <Reveal index={5} style={{ marginTop: 8 }}>
           <Section title="Weekly check-in">
-            <Card onPress={() => router.push('/(patient)/wellbeing' as any)}>
+            <GCard onPress={() => router.push('/(patient)/wellbeing' as any)}>
               <ListRow icon="happy-outline" title="How have you been feeling?" subtitle="Four quick questions. Private to you." />
-            </Card>
+            </GCard>
           </Section>
         </Reveal>
       ) : null}
 
       <Reveal index={6}>
         <Section title="Today's medicines" action={meds && meds.total > 0 ? `${meds.taken} of ${meds.total} taken` : 'Open'} onAction={() => router.push('/(patient)/medications' as any)}>
-          <Card style={{ paddingVertical: 6 }}>
+          <GCard style={{ paddingVertical: 6 }}>
             {meds && meds.doses?.length ? meds.doses.slice(0, 4).map((d: any, i: number) => (
               <PressScale key={`${d.medication_id}-${d.time}`} label={`${d.name}, ${d.time}, ${d.status}`} onPress={() => router.push('/(patient)/medications' as any)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: C.borderLight }}>
@@ -488,23 +498,23 @@ export default function Today() {
                 <T v="caption" color={C.textSecondary}>Reminders and your doctor's prescriptions appear here.</T>
               </PressScale>
             )}
-          </Card>
+          </GCard>
         </Section>
       </Reveal>
 
       <Reveal index={6}>
         <Section title="Your care team">
-          <Card>
+          <GCard>
             <ListRow icon="chatbubbles-outline" title="Messages" subtitle={unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'}
               right={unreadCount > 0 ? <Badge label={String(unreadCount)} tone="danger" /> : undefined}
               onPress={() => router.push('/(patient)/messages' as any)} />
-          </Card>
+          </GCard>
         </Section>
       </Reveal>
 
       <Reveal index={7}>
         <Section title="Need urgent help?">
-          <Card tone="danger">
+          <GCard tone="danger">
             <T v="bodyStrong" color={C.danger}>Emergency</T>
             <T v="caption" color={C.textPrimary} style={{ marginTop: 4, marginBottom: 12 }}>
               For chest pain, trouble breathing, stroke signs, severe bleeding or thoughts of self-harm, call emergency services now.</T>
@@ -517,9 +527,10 @@ export default function Today() {
             )}
             <View style={{ height: 10 }} />
             <Button title={`Call ${EMERGENCY_NUMBER}`} icon="call" variant="secondary" onPress={callEmergency} />
-          </Card>
+          </GCard>
         </Section>
       </Reveal>
     </Screen>
+    </View>
   );
 }

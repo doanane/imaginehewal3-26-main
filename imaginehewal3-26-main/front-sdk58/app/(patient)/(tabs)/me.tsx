@@ -27,7 +27,20 @@ export default function Me() {
   const { isConnected } = useMessaging();
   const [uploading, setUploading] = useState(false);
   const [demo, setDemo] = useState(false);
+  const [stats, setStats] = useState<{ streak: number | null; meds: string | null; steps: number | null }>({ streak: null, meds: null, steps: null });
   useEffect(() => { api.getEmergencyConfig().then((c) => setDemo(!!c.simulation)).catch(() => {}); }, []);
+  useEffect(() => {                                   // the three figures on the identity card: all real, each left as -- when there is nothing to show
+    let live = true;
+    Promise.allSettled([api.getActivitySummary(), api.getMedicationsToday()]).then(([a, m]) => {
+      if (!live) return;
+      setStats({
+        streak: a.status === 'fulfilled' ? (a.value.streak_days ?? 0) : null,
+        steps: a.status === 'fulfilled' ? Math.round(a.value.rings.steps.value) : null,
+        meds: m.status === 'fulfilled' && m.value.total > 0 ? `${m.value.taken}/${m.value.total}` : null,
+      });
+    });
+    return () => { live = false; };
+  }, []);
   const name = user?.full_name || user?.username || 'Your account';
   const patientId = String(user?.patient_id || user?.id || '');
 
@@ -76,28 +89,35 @@ export default function Me() {
 
   return (
     <Screen header={<ScreenHeader title="Profile" onBack={() => router.canGoBack() ? router.back() : router.replace('/(patient)/(tabs)/today' as any)} />}>
-      <Card tone="soft">
+      <Card style={{ borderRadius: 24, padding: 20 }}>
         <View style={{ alignItems: 'center' }}>
-          <View style={{ position: 'relative' }}>
+          <View style={{ position: 'relative', padding: 4, borderRadius: 54, borderWidth: 3, borderColor: C.primary }}>
             {uploading ? (
-              <View style={{ width: 92, height: 92, borderRadius: 46, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }}>
                 <ActivityIndicator color={C.primary} />
               </View>
             ) : profileImageSource(user?.profile_image) ? (
-              <Image source={profileImageSource(user?.profile_image) as any} style={{ width: 92, height: 92, borderRadius: 46 }} />
-            ) : <Avatar name={name} size={92} />}
+              <Image source={profileImageSource(user?.profile_image) as any} style={{ width: 84, height: 84, borderRadius: 42 }} />
+            ) : <Avatar name={name} size={84} />}
             <Pressable onPress={pickPhoto} accessibilityRole="button" accessibilityLabel="Change profile picture"
-              style={{ position: 'absolute', right: 0, bottom: 0, backgroundColor: C.primary, borderRadius: 16, padding: 8 }}>
-              <Ionicons name="camera" size={17} color="#fff" />
+              style={{ position: 'absolute', right: -4, bottom: -4, backgroundColor: C.primary, borderRadius: 16, padding: 8, borderWidth: 2, borderColor: '#fff' }}>
+              <Ionicons name="camera" size={16} color="#fff" />
             </Pressable>
           </View>
-          <T v="title" style={{ marginTop: 12 }}>{name}</T>
+          <T v="title" style={{ marginTop: 14, fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }), fontWeight: '600' }}>{name}</T>
           <T v="caption" color={C.textSecondary}>{user?.email}</T>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <Badge label="Patient" tone="info" />
             <Badge label={isConnected ? 'Connected' : 'Offline'} tone={isConnected ? 'success' : 'neutral'} />
           </View>
-          <T v="label" color={C.primary} onPress={pickPhoto} accessibilityRole="button" style={{ marginTop: 14 }}>Change profile picture</T>
+        </View>
+        <View style={{ flexDirection: 'row', marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: C.borderLight }}>
+          {[{ k: 'Day streak', v: stats.streak != null ? String(stats.streak) : '--' }, { k: 'Medicines today', v: stats.meds ?? '--' }, { k: 'Steps today', v: stats.steps != null ? stats.steps.toLocaleString() : '--' }].map((x, i) => (
+            <View key={x.k} style={{ flex: 1, alignItems: 'center', borderLeftWidth: i ? 1 : 0, borderLeftColor: C.borderLight }}>
+              <T v="title" style={{ fontSize: 22, lineHeight: 28, fontVariant: ['tabular-nums'] }}>{x.v}</T>
+              <T v="caption" color={C.textSecondary}>{x.k}</T>
+            </View>
+          ))}
         </View>
       </Card>
 
@@ -120,7 +140,7 @@ export default function Me() {
 
       <Section title="Health and care">
         <Card>
-          <ListRow icon="person-outline" title="Personal and medical details" subtitle="Conditions, medicines and body measurements" onPress={() => router.push('/(patient)/profile' as any)} />
+          <ListRow icon="person-outline" title="Personal and medical details" subtitle="Conditions, medicines and body measurements" onPress={() => router.push('/(patient)/profile-setup' as any)} />
           <ListRow icon="heart-outline" title="Health overview" subtitle="Vitals, trends and recent readings" onPress={() => router.push('/(patient)/health' as any)} />
           <ListRow icon="chatbubbles-outline" title="Messages with care team" subtitle="Chat with your caregivers and doctors" onPress={() => router.push('/(patient)/messages' as any)} />
           {demo ? <ListRow icon="flask-outline" title="Demo tools" subtitle="Simulate a blood pressure spike to show the emergency flow" onPress={() => router.push('/(patient)/demo' as any)} /> : null}

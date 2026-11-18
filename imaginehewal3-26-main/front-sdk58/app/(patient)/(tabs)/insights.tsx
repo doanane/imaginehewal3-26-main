@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import DonutChart from '../../../components/charts/DonutChart';
 import Gauge from '../../../components/charts/Gauge';
 import Heatmap from '../../../components/charts/Heatmap';
@@ -17,6 +18,8 @@ import { useHealthSync } from '../../../services/healthSync';
 import { SourcesCard } from '../../../components/health/SourcesCard';
 import { Fold } from '../../../components/health/Fold';
 import { HeartCard } from '../../../components/health/HeartCard';
+import { HealthOverview } from '../../../components/health/HealthOverview';
+import { GlassBackdrop } from '../../../components/ui/Glass';
 import { WeekReview } from '../../../components/health/WeekReview';
 import { useHealthInsights } from '../../../services/healthInsights';
 import { fmtKg, weekRows } from '../../../services/healthMath';
@@ -200,11 +203,13 @@ export default function Insights() {
   const missing = [oxyShown ? null : 'oxygen', bpShown ? null : 'blood pressure'].filter(Boolean) as string[];
 
   return (
-    <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); api.invalidateApiCache(); loadAi(true); load(); }} tintColor={C.primary} />} contentStyle={{ paddingBottom: 120 }}>
+    <View style={{ flex: 1, backgroundColor: C.background }}>
+    <GlassBackdrop />
+    <Screen bg="transparent" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); api.invalidateApiCache(); loadAi(true); load(); }} tintColor={C.primary} />} contentStyle={{ paddingBottom: 120 }}>
       <Reveal index={0}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <T v="display">Health</T>
+            <T v="display" style={{ fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }), fontStyle: 'italic', fontWeight: '400' }}>Health</T>
             <T v="caption" color={sync.connection?.connected ? C.textSecondary : C.warning} numberOfLines={1}>
               {sync.connection?.connected ? `Apple Health read ${sync.readAt ? ago(new Date(sync.readAt).toISOString()) : 'just now'}` : 'No device connected yet'}
             </T>
@@ -215,6 +220,8 @@ export default function Insights() {
           </View>
         </View>
       </Reveal>
+
+      {sync.connection?.connected && ih ? <Reveal index={1} style={{ marginTop: 16 }}><HealthOverview data={ih} /></Reveal> : null}
 
       <Reveal index={1} style={{ marginTop: 16 }}>
         <SourcesCard sync={sync} onConnect={() => router.push('/(patient)/devices' as any)} onSync={() => { void sync.syncNow({ force: true }); }} />
@@ -278,7 +285,8 @@ export default function Insights() {
       {/* 2. This week, then the heart, both from Apple Health */}
       {sync.connection?.connected ? (
         <Reveal index={2} style={{ marginTop: 16 }}>
-          {ih ? <WeekReview rows={weekRows(ih)} /> : <Skeleton height={180} />}
+          {!ih ? <Skeleton height={180} /> : null}
+          {ih ? <View style={{ marginTop: 16 }}><WeekReview rows={weekRows(ih)} /></View> : null}
           {ih ? <View style={{ marginTop: 16 }}><HeartCard heart={ih.heart} restingLatest={ih.heart.restingLatest} live={liveHrFresh} /></View> : null}
         </Reveal>
       ) : null}
@@ -375,5 +383,6 @@ export default function Insights() {
       </Section>
       <View style={{ marginTop: 16 }}><Banner tone="info" text="These readings support, and do not replace, advice from your clinician." /></View>
     </Screen>
+    </View>
   );
 }
