@@ -264,5 +264,25 @@ What is in place today is described above and runs on the live service. These ar
 - **Interoperability:** FHIR R4 export is live. Receiving records from a clinic system is next.
 - **Impact numbers:** the Impact page measures from real use. The seeded cohort and the guest sandbox are labelled "(demo)" and are never counted as results.
 
+## Design direction (no generic AI look)
+
+Every screen, on the phone and on the doctor site, follows these rules. They apply to people and to AI assistants working in this repository.
+
+Build a distinctive, non-generic interface with a clear point of view. Avoid default "AI slop" patterns.
+
+**Design and layout rules**
+- **Typography:** never use Inter, Arial or generic system defaults. Pair a distinctive display or editorial font with a clean body font and set a clear hierarchy.
+- **Colour and theme:** commit to one cohesive palette held in CSS variables. Use one dominant tone and a sharp accent instead of evenly spread neon or purple gradients or default SaaS templates. Our dominant tone is clinical white and ink, our accent is the HEWAL3 red `#AD0023`.
+- **Layout variety:** do not default to a centred hero, a three-card icon grid, a testimonial carousel and a three-column footer. Vary section pacing, alignment and visual rhythm.
+- **Motion and polish:** keep animation intentional and light (CSS transitions, or Reanimated on the phone). Keep contrast accessible and layouts responsive.
+- **Content:** use realistic, domain-specific copy and real assets, not placeholder clichés.
+
+**Process**
+1. State the visual direction, typography and colour tokens first.
+2. Build and refine one core component or section before expanding.
+3. Audit the result for generic layout tropes and fix them before finishing.
+
+**What counts as a tell in this project:** glowing or coloured shadows, gradient bars, tilting cards, a fade-in on every block, a coloured pill for every status, tinted icon tiles repeated as the only layout, and template wording such as "Smart", "Your personalised" or "Powered by AI".
+
 ## Contributing
 Work on a branch and open a pull request. Do not commit `.env` files or anything under `private/`.

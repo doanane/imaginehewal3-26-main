@@ -6,7 +6,7 @@ test_output.txt
 back/docs/azure app settings.txt
 
 CLAUDE.md
-
+README_FIX.md
 # Notes for the owner only: never pushed
 private/
 *.private.md
@@ -15,3 +15,6 @@ private/
 front-sdk58/.env
 front-sdk58/ios/
 front-sdk58/android/
+
+# Local Claude Code brief that points into Hewal3/
+CLAUDE.local.md
