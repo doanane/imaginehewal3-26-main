@@ -1,0 +1,91 @@
+/* Hallmark · doctor site · restyle: mint ground, one deep green, HEWAL3 red kept for emergencies · type Source Serif 4 + IBM Plex Sans
+   critique: soft surfaces and one accent, no glow, no tilt, labels in sentence case, status by word and tint
+   waive 7a: the call screen stays near-black because it sits over a video image */
+:root { --c-on-brand: #ffffff; --ease: cubic-bezier(.2, .7, .2, 1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --c-on-brand: #08201a; } }
+:root[data-theme="dark"] { --c-on-brand: #08201a; }
+html, body { overflow-x: clip; }
+
+/* ---------- shell */
+.side { background: color-mix(in srgb, var(--c-side) 88%, transparent); backdrop-filter: none; }
+.brand-name { font-family: var(--f-display); font-weight: 600; letter-spacing: .02em; font-size: 19px; }
+.nav { border-radius: var(--r-sm); font-weight: 500; transition: color .15s var(--ease), background-color .15s var(--ease); }
+.nav-pill { border-radius: var(--r-sm); background: var(--c-brand-soft); box-shadow: none; }
+.nav.on { color: var(--c-brand); font-weight: 600; }
+.nav:active { transform: scale(.98); }
+.count { background: var(--c-accent); color: #fff; }
+.me { background: var(--c-card); border: 1px solid var(--c-line); }
+.avatar { background: var(--c-brand-soft); color: var(--c-brand); }
+.avatar.critical { background: var(--c-bad-bg); color: var(--c-bad); } .avatar.monitor { background: var(--c-amber-bg); color: var(--c-amber); }
+.avatar.stable, .avatar.healthy { background: var(--c-green-bg); color: var(--c-green); } .avatar.no_data { background: var(--c-none-bg); color: var(--c-none); }
+
+/* ---------- surfaces and controls */
+.card { border-radius: var(--r); border-color: var(--c-line); box-shadow: var(--shadow-1); }
+.card-head h2 svg { color: var(--c-brand); }
+.btn { border-radius: var(--r-sm); font-weight: 600; }
+.btn.primary { background: var(--c-brand); color: var(--c-on-brand); }
+.btn.primary:hover { background: var(--c-brand-d); transform: none; }
+.btn:active { transform: translateY(1px); }
+.btn.ghost { border-color: var(--c-line); background: var(--c-card); }
+.btn:disabled { background: var(--c-none-bg); color: var(--c-none); border-color: var(--c-line); box-shadow: none; opacity: 1; cursor: not-allowed; }
+.page-head h1 { font-size: 30px; }
+a:hover .badge, .pill, .status-pill { letter-spacing: 0; }
+
+/* ---------- the four figures at the top of Today */
+.kpi { transition: border-color .15s var(--ease); overflow: visible; }
+.kpi:hover { border-color: color-mix(in srgb, var(--c-brand) 40%, var(--c-line)); }
+.kpi-ic { transform: none; border-radius: var(--r-sm); }
+.kpi b { transform: none; font-family: var(--f-display); font-weight: 600; letter-spacing: -.01em; }
+.kpi small { color: var(--c-mute); }
+.kpi:not(.warn):not(.bad) small { color: var(--c-brand); font-weight: 500; }
+.kpi.bad small { color: var(--c-bad); } .kpi.warn small { color: var(--c-amber); }
+
+/* ---------- today: schedule beside the next patient */
+.today-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.today-grid > .card, .today-grid > .stack > .card { margin-bottom: 20px; }
+.sched-list { display: flex; flex-direction: column; }
+.sched-row { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto auto auto; align-items: center; gap: 14px; padding: 12px 8px; border-top: 1px solid var(--c-line); border-radius: var(--r-sm); }
+.sched-row:first-child { border-top: 0; }
+.sched-row.next { background: var(--c-brand-soft); border-top-color: transparent; outline: 1.5px solid var(--c-brand); outline-offset: -1.5px; }
+.sched-row.next + .sched-row { border-top-color: transparent; }
+.sched-row.completed .sr-who b, .sched-row.completed .sr-time b { color: var(--c-mute); font-weight: 500; }
+.sr-time b { display: block; font-weight: 600; white-space: nowrap; } .sr-time small { color: var(--c-mute); }
+.sr-who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sr-who > span:last-child { min-width: 0; } .sr-who b { display: block; font-weight: 600; } .sr-who small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.how { display: inline-flex; align-items: center; gap: 6px; color: var(--c-ink2); font-size: 13.5px; }
+.status-pill { text-transform: capitalize; font-weight: 600; background: var(--c-none-bg); color: var(--c-none); }
+.status-pill.next { background: var(--c-brand); color: var(--c-on-brand); display: inline-flex; align-items: center; gap: 5px; }
+.status-pill.confirmed { background: var(--c-green-bg); color: var(--c-green); }
+.status-pill.completed { background: var(--c-none-bg); color: var(--c-none); }
+.sr-act { justify-self: end; }
+
+.next-card { padding: 20px; }
+.next-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-bottom: 14px; }
+.next-top b { display: block; font-family: var(--f-display); font-size: 19px; font-weight: 600; }
+.next-facts { display: grid; grid-template-columns: 76px 1fr; gap: 8px 12px; margin: 0 0 16px; padding: 14px 0; border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); }
+.next-facts dt { color: var(--c-mute); font-size: 13.5px; } .next-facts dd { margin: 0; font-weight: 500; }
+.next-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.queue li a { gap: 12px; justify-content: flex-start; padding: 10px 6px; }
+.queue li a > div { flex: 1; min-width: 0; } .queue li a b { display: block; } .queue li a small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 1100px) { .today-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .sched-row { grid-template-columns: 56px minmax(0, 1fr) auto; }
+  .sched-row .how, .sched-row .status-pill { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+/* ---------- sign in */
+.login-hero { background: #0f3d2e; color: #eaf5ef; align-items: center; padding: 0; }
+.login-hero .hero-copy { padding: clamp(32px, 6vw, 80px); max-width: 640px; }
+.login-hero h1 { font-family: var(--f-display); font-weight: 600; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.08; letter-spacing: -.015em; margin: 36px 0 40px; text-wrap: balance; color: #fff; }
+.hero-points { margin: 0; display: grid; gap: 22px; }
+.hero-points > div { border-top: 1px solid rgba(255, 255, 255, .16); padding-top: 14px; }
+.hero-points dt { font-weight: 600; font-size: 16px; color: #fff; }
+.hero-points dd { margin: 4px 0 0; color: #b9d4c8; max-width: 46ch; }
+.login-form-side { background: transparent; }
+.login-card { border-radius: var(--r); box-shadow: var(--shadow-1); max-width: 420px; }
+.login-card h2 { font-size: 26px; }
+.login-card label { font-weight: 500; }
+.field:focus-within { border-color: var(--c-brand); outline: 2px solid color-mix(in srgb, var(--c-brand) 35%, transparent); outline-offset: 0; }
