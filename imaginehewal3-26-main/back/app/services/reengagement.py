@@ -212,6 +212,14 @@ def mark_responses(db: Session, user_id: int, plan_id: int, when: Optional[datet
     """A check-in within 48 hours of a message means the message worked."""
     when = _aware(when) or datetime.now(timezone.utc)
     n = 0
+    try:
+        from app.models.behavior import ComebackSession
+        for cs in db.query(ComebackSession).filter(ComebackSession.user_id == user_id, ComebackSession.returned == False).all():  # noqa: E712
+            if cs.created_at and 0 <= (when - _aware(cs.created_at)).total_seconds() <= 72 * 3600:
+                cs.returned, cs.returned_at = True, when
+        db.commit()
+    except Exception:
+        db.rollback()
     for nudge in db.query(BehaviorNudge).filter(BehaviorNudge.user_id == user_id, BehaviorNudge.responded == False).all():  # noqa: E712
         if 0 <= (when - _aware(nudge.sent_at)).total_seconds() <= ANSWER_WINDOW.total_seconds():
             nudge.responded, nudge.responded_at = True, when

@@ -8,6 +8,8 @@ import { Badge, Banner, Button, Card, Chip, T } from '../ui';
 import { DepthSurface, ProgressRing, Reveal } from '../ui/motion';
 import { Ionicons, Pressable, View } from '../themed';
 import AgentCard from './AgentCard';
+import ComebackCoach from './ComebackCoach';
+import GoalsCard from './GoalsCard';
 import { BARRIER_IDS, BEHAVIOR_IDS, BEH_ICON, EVIDENCE_TONE, Tr } from './shared';
 
 const C = theme.COLORS;
@@ -133,6 +135,7 @@ export default function TodayTab({ today, recommendations, approaches, settings,
     <View>
       {today?.notice ? <Reveal index={0}><Banner tone="info" icon="heart-outline" text={today.notice} /></Reveal> : null}
 
+      {items.length > 0 ? <ComebackCoach t={t} onChange={onChange} /> : null}
       {items.length > 0 ? <AgentCard t={t} onChange={onChange} /> : null}
 
       {items.length > 0 ? (
@@ -152,6 +155,8 @@ export default function TodayTab({ today, recommendations, approaches, settings,
       ) : null}
 
       {items.map((it) => <StepCard key={it.action.id} item={it} meta={meta} t={t} wearable={!!settings?.wearable_data_enabled} onChange={onChange} />)}
+
+      <GoalsCard t={t} onChange={onChange} />
 
       {(items.length === 0 || BEHAVIOR_IDS.some((b) => !active.includes(b))) ? (
         <View style={{ marginTop: 20 }}>

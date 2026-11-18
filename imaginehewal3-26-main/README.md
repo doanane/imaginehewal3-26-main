@@ -59,6 +59,9 @@ HEWAL3 notices a lapse (three or more days without a check-in), reaches the pers
 | Area | What you get |
 |---|---|
 | **Habit system** | Daily plans for activity, movement breaks, sleep, water, medicines, food and weight. Targets start from the person's own baseline and grow at a pace that suits their group. Techniques (such as tiny steps or "if-then" plans) are chosen with Thompson sampling, so what works for the person is used more often. |
+| **Personalised goals** | Activity, nutrition, water and sleep goals that start from what the person actually does and logs, move toward public guidance in stages, and say why. Sodium, fibre and water are compared with real meal and water logs. |
+| **Smart reminders** | Reminders that learn the person's usual time, avoid quiet hours and prayer time, and slow down and pause if they are ignored. Scheduled on the phone. |
+| **Comeback coach** | After 3 days away: a blame-free guide to what got in the way, three ways back, an if-then plan and a relapse plan. Shows which options bring people back. |
 | **Care agent** | A visible loop that runs by itself: it **senses** check-ins, readings and the person's own clock and week, **decides** with written rules, **acts** with one fitted message and a smaller step, **hands off** to a clinician only for a very high reading or a long silence in someone with a condition, and **measures** whether the person came back. Every pass keeps a trace the person can read in the app (Habits, Today, "Your care agent") and the doctor can review on the Care agent page. Try the public story at `/doctor/#/story`. |
 | **Lapse recovery** | Detects a lapse, picks the channel and time the person allowed, sends one short, fitted message, shrinks the step, and records whether a check-in followed within 48 hours. If messages go unanswered it moves from push to a quiet in-app note, then to a supporter the person chose, then stops. |
 | **Vitals and risk** | Blood pressure, heart rate, oxygen, weight, sleep and steps from Apple Health, with one shared definition of patient status for all three roles. A repeated reading is required before a blood-pressure alert, which cut false alarms in simulation (see `docs/VALIDATION.md`). |
@@ -238,6 +241,7 @@ npx tsc --noEmit                             # type check
 ## Documents
 | File | Purpose |
 |---|---|
+| [`docs/BUILT_DURING_THE_CHALLENGE.md`](docs/BUILT_DURING_THE_CHALLENGE.md) | What was built for the challenge, what it stands on, and how to check each claim |
 | [`docs/ASSESSMENT_MAP.md`](docs/ASSESSMENT_MAP.md) | Each assessment criterion, the evidence and how to check it |
 | [`docs/PILOT_AND_COMMERCIAL.md`](docs/PILOT_AND_COMMERCIAL.md) | 12-week pilot design, measures, compliance gaps, business model |
 | [`docs/VALIDATION.md`](docs/VALIDATION.md) | Rule verification by simulation |

@@ -71,6 +71,18 @@ export default function ImpactPage() {
             ))}
           </section>
 
+          {d.comeback && Object.keys(d.comeback).length > 0 && (
+            <section className="card">
+              <div className="card-head"><h2><Repeat size={18} />Which way back works</h2><small>Comeback coach, by what the person chose</small></div>
+              <table className="tbl"><tbody>{Object.entries(d.comeback as Record<string, any>).map(([o, v]) => (
+                <tr key={o}><td>{({ tiny: 'A 2 minute version', retime: 'A better time', swap: 'A different version', buddy: 'Someone to cheer them on', rest: 'Rest first' } as Record<string, string>)[o] || o}</td>
+                  <td>{v.hidden ? <span className="muted">fewer than 5 people</span> : <b>{pct(v.came_back_within_3_days)}</b>}</td>
+                  <td className="muted">{v.hidden ? '' : `came back within 3 days, n = ${v.chosen}`}</td></tr>
+              ))}</tbody></table>
+              <p className="muted small">Counted when a check-in follows within 72 hours of the choice. Association, not proof. Groups under 5 are hidden.</p>
+            </section>
+          )}
+
           <details className="method"><summary>How each measure is defined</summary>
             <ul className="plain">{Object.entries(d.definitions as Record<string, string>).map(([k, v]) => <li key={k}><div><b>{k}</b><small>{v}</small></div></li>)}</ul>
             <p>{d.privacy}</p>

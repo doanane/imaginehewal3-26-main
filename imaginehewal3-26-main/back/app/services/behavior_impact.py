@@ -148,6 +148,14 @@ def compute_impact(db: Session, today: Optional[date] = None, user_ids: Optional
         by_ch[n.channel].append(bool(n.responded))
     out["outreach"] = {c: _k(len(v), min_cell, {"sent": len(v), "followed_by_check_in": round(sum(v) / len(v), 2)}) for c, v in by_ch.items()}
 
+    # which way back brings people back: the comeback coach's options, by whether a check-in followed within 72 hours (group totals only)
+    from app.models.behavior import ComebackSession
+    sessions = [c for c in db.query(ComebackSession).all() if scope is None or c.user_id in scope]
+    by_opt: Dict[str, List[bool]] = defaultdict(list)
+    for c in sessions:
+        by_opt[c.option].append(bool(c.returned))
+    out["comeback"] = {o: _k(len(v), min_cell, {"chosen": len(v), "came_back_within_3_days": round(sum(v) / len(v), 2)}) for o, v in by_opt.items()}
+
     # equity: the same outcomes for each group, so a programme that works on average but not for everyone shows up
     prof = {r.user_id: r for r in db.query(UserProfile).filter(UserProfile.user_id.in_(people)).all()}
     ctx = {r.user_id: r for r in db.query(BehaviorContext).filter(BehaviorContext.user_id.in_(people)).all()}

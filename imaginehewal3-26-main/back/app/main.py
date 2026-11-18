@@ -34,6 +34,7 @@ from app.routers.live_vitals import router as live_vitals_router
 from app.routers.realtime import router as realtime_router
 from app.routers.behavior_support import router as behavior_support_router, doctor_router as behavior_doctor_router
 from app.routers.doctor_link import doctor_router as link_doctor_router, patient_router as link_patient_router
+from app.routers.behavior_coach import router as behavior_coach_router
 from app.routers.agent import router as agent_router, doctor_router as agent_doctor_router
 from app.routers.care_plan import doctor_router as care_plan_doctor_router, patient_router as care_plan_patient_router, misc_router as care_plan_misc_router
 from app.routers.assistant import router as assistant_router
@@ -202,6 +203,7 @@ app.include_router(behavior_support_router)
 app.include_router(behavior_doctor_router)
 app.include_router(link_doctor_router)
 app.include_router(link_patient_router)
+app.include_router(behavior_coach_router)
 app.include_router(agent_router)
 app.include_router(agent_doctor_router)
 

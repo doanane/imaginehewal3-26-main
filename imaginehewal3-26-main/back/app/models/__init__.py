@@ -86,4 +86,4 @@ __all__ = [
 from .care_chat import DoctorMessage
 from .link_request import DoctorLinkRequest
 from .care_plan import DoctorAppointment, DoctorNote, Prescription, PushToken, CareNote
-from .behavior import AgentRun, BehaviorContext, BehaviorNudge, BehaviorShare, BehaviorCheer, BehaviorGroup, BehaviorGroupMember
+from .behavior import ComebackSession, AgentRun, BehaviorContext, BehaviorNudge, BehaviorShare, BehaviorCheer, BehaviorGroup, BehaviorGroupMember

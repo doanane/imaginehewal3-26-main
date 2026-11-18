@@ -6,8 +6,7 @@
 
 A complete, working health platform for people with long-term conditions, desk-based workers, and young, middle-aged and older adults. A phone app for patients and caregivers, a website for doctors, and one API behind both.
 
-[![Demo video](https://img.shields.io/badge/demo-YouTube-ff0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/OZlOT4_6Sio
-)
+[![Demo video](https://img.shields.io/badge/demo-YouTube-ff0000?style=flat-square&logo=youtube&logoColor=white)](https://youtu.be/OZlOT4_6Sio)
 [![Live API](https://img.shields.io/badge/live%20API-Render-46E3B7?style=flat-square)](https://imaginehewal3-26-main.onrender.com/ping)
 [![Doctor site](https://img.shields.io/badge/doctor%20site-%2Fdoctor%2F-1f6feb?style=flat-square)](https://imaginehewal3-26-main.onrender.com/doctor/)
 [![System card](https://img.shields.io/badge/system%20card-public-8957e5?style=flat-square)](https://imaginehewal3-26-main.onrender.com/system/card)
@@ -20,9 +19,7 @@ A complete, working health platform for people with long-term conditions, desk-b
 
 > **HEWAL3 is live and fully working.** Patients and caregivers use the phone app, doctors use the website, and both run on one API deployed on Render. Watch the [care agent story](https://imaginehewal3-26-main.onrender.com/doctor/#/story) with no sign-in, or open the [doctor site](https://imaginehewal3-26-main.onrender.com/doctor/) and choose **Continue as Reviewer**, or choose it in the app. HEWAL3 supports care and does not diagnose; it is not a medical device.
 >
-> **Watch the demo:** [https://youtu.be/OZlOT4_6Sio
-](https://youtu.be/OZlOT4_6Sio
-)
+> **Watch the demo:** [https://youtu.be/OZlOT4_6Sio](https://youtu.be/OZlOT4_6Sio)
 
 ---
 
@@ -46,12 +43,9 @@ A complete, working health platform for people with long-term conditions, desk-b
 
 ## Demo video
 
-[![Watch the HEWAL3 demo](https://img.youtube.com/vi/jdmzTuE2sWw/hqdefault.jpg)](https://youtu.be/OZlOT4_6Sio
-)
+[![Watch the HEWAL3 demo](https://img.youtube.com/vi/jdmzTuE2sWw/hqdefault.jpg)](https://youtu.be/OZlOT4_6Sio)
 
-Watch the full demo on YouTube: [https://youtu.be/OZlOT4_6Sio
-](https://youtu.be/OZlOT4_6Sio
-)
+Watch the full demo on YouTube: [https://youtu.be/OZlOT4_6Sio](https://youtu.be/OZlOT4_6Sio)
 
 ---
 
@@ -65,6 +59,9 @@ HEWAL3 notices a lapse (three or more days without a check-in), reaches the pers
 | Area | What you get |
 |---|---|
 | **Habit system** | Daily plans for activity, movement breaks, sleep, water, medicines, food and weight. Targets start from the person's own baseline and grow at a pace that suits their group. Techniques (such as tiny steps or "if-then" plans) are chosen with Thompson sampling, so what works for the person is used more often. |
+| **Personalised goals** | Activity, nutrition, water and sleep goals that start from what the person actually does and logs, move toward public guidance in stages, and say why. Sodium, fibre and water are compared with real meal and water logs. |
+| **Smart reminders** | Reminders that learn the person's usual time, avoid quiet hours and prayer time, and slow down and pause if they are ignored. Scheduled on the phone. |
+| **Comeback coach** | After 3 days away: a blame-free guide to what got in the way, three ways back, an if-then plan and a relapse plan. Shows which options bring people back. |
 | **Care agent** | A visible loop that runs by itself: it **senses** check-ins, readings and the person's own clock and week, **decides** with written rules, **acts** with one fitted message and a smaller step, **hands off** to a clinician only for a very high reading or a long silence in someone with a condition, and **measures** whether the person came back. Every pass keeps a trace the person can read in the app (Habits, Today, "Your care agent") and the doctor can review on the Care agent page. Try the public story at `/doctor/#/story`. |
 | **Lapse recovery** | Detects a lapse, picks the channel and time the person allowed, sends one short, fitted message, shrinks the step, and records whether a check-in followed within 48 hours. If messages go unanswered it moves from push to a quiet in-app note, then to a supporter the person chose, then stops. |
 | **Vitals and risk** | Blood pressure, heart rate, oxygen, weight, sleep and steps from Apple Health, with one shared definition of patient status for all three roles. A repeated reading is required before a blood-pressure alert, which cut false alarms in simulation (see `docs/VALIDATION.md`). |
@@ -244,6 +241,7 @@ npx tsc --noEmit                             # type check
 ## Documents
 | File | Purpose |
 |---|---|
+| [`docs/BUILT_DURING_THE_CHALLENGE.md`](imaginehewal3-26-main/docs/BUILT_DURING_THE_CHALLENGE.md) | What was built for the challenge, what it stands on, and how to check each claim |
 | [`docs/ASSESSMENT_MAP.md`](imaginehewal3-26-main/docs/ASSESSMENT_MAP.md) | Each assessment criterion, the evidence and how to check it |
 | [`docs/PILOT_AND_COMMERCIAL.md`](imaginehewal3-26-main/docs/PILOT_AND_COMMERCIAL.md) | 12-week pilot design, measures, compliance gaps, business model |
 | [`docs/VALIDATION.md`](imaginehewal3-26-main/docs/VALIDATION.md) | Rule verification by simulation |

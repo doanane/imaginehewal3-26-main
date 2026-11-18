@@ -5,6 +5,7 @@ import api from '../../services/api';
 import { Badge, Button, Card, TextField, T } from '../ui';
 import { Reveal } from '../ui/motion';
 import { View } from '../themed';
+import RemindersCard from './RemindersCard';
 import { Choice, EVIDENCE_TONE, SwitchRow, Tr } from './shared';
 
 const C = theme.COLORS;
@@ -34,6 +35,7 @@ export default function YouTab({ settings, approaches, onChange, t }: { settings
 
   return (
     <View>
+      <RemindersCard t={t} />
       <Reveal index={0}>
         <T v="title">{t('habits.about_you')}</T>
         <T v="body" color={C.textSecondary} style={{ marginTop: 4 }}>{t('habits.about_sub')}</T>

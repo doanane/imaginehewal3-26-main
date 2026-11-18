@@ -61,6 +61,10 @@ class BehaviorSettings(Base):
     reengage_channel = Column(String, default="push")        # push | in_app | none: how we may reach out after a lapse
     max_nudges_per_week = Column(Integer, default=2)         # a hard cap the person controls
     share_with_doctor = Column(Boolean, default=False)       # the linked doctor sees behaviour progress only if this is on
+    reminder_mode = Column(String, default="auto")           # auto (learns the time) | off | fixed (the person's own hour)
+    reminder_hour = Column(Integer, nullable=True)           # only used when the mode is fixed
+    reminder_stage = Column(Integer, default=0)              # 0 daily, 1 moved to the usual time, 2 every other day, 3 paused (it was not helping)
+    reminder_stage_on = Column(Date, nullable=True)          # when the stage last changed
 
 
 class BehaviorContext(Base):
@@ -161,4 +165,19 @@ class AgentRun(Base):
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     review_note = Column(Text, nullable=True)
     returned = Column(Boolean, default=False)                # the person checked in within 48 hours of the message
+    returned_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class ComebackSession(Base):
+    """One time a person used the comeback coach: what got in the way, which way back they chose, and whether they checked in again within 72 hours.
+    Used only to show, anonymously and in groups of 5 or more, which options bring people back."""
+    __tablename__ = "comeback_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    plan_id = Column(Integer, ForeignKey("behavior_plans.id"), nullable=True)
+    barrier = Column(String, nullable=False)
+    option = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    returned = Column(Boolean, default=False)
     returned_at = Column(DateTime(timezone=True), nullable=True)

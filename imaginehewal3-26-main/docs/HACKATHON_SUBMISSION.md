@@ -54,6 +54,17 @@ Target and plan: `PILOT_AND_COMMERCIAL.md`. Interoperability: HL7 FHIR R4 export
 
 ---
 
+## Final round: the three things the review team asked for
+The review team asked us to show work made for this event: a habit planner with personalised nutrition or activity goals, adaptive reminders, and a comeback coach for routine lapses, with progress tracking and privacy central. All three are built, tested and live. The mapping, the dated record of recent work, and what stands on earlier work are in [`BUILT_DURING_THE_CHALLENGE.md`](BUILT_DURING_THE_CHALLENGE.md).
+
+| Ask | In the product |
+|---|---|
+| Personalised activity and nutrition goals | "Goals made for you": steps, active minutes, sodium, fibre, water, sleep, from the person's own baseline and logs, in stages, with the reason and source for each |
+| Adaptive reminders | "Smart reminders": learns the person's usual time, avoids quiet hours and prayer time, slows down and pauses if ignored; the person can fix the time or switch off |
+| Comeback coach | Appears after 3 days away: what got in the way, three ways back, an if-then plan, a relapse plan; shows which options bring people back (groups of 5 or more) |
+| Progress tracking | Impact page: retention, persistence, recovery, change from baseline, fairness, comeback options |
+| Privacy controls | Consent, quiet hours, weekly cap, one-tap stop, export, erase, doctor sees habits only with consent |
+
 ## The care agent: the story in four beats
 
 **One sentence.** For people who sit all day and drift away from a healthy routine, our agent notices the gap in a few days, sends one message that fits their day and prayer times, and shrinks the next step so they come back, with a clinician looking only where it matters.

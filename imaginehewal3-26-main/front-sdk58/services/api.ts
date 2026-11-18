@@ -1112,6 +1112,12 @@ export const checkInBehaviorAction = (id: number, data: { status?: string; value
 export const syncBehaviorWearable = () => apiCall<any>('/behavior/sync-wearable', { method: 'POST' });
 export const seedBehaviorDemo = () => apiCall<any>('/behavior/demo/seed', { method: 'POST' });
 export const deleteBehaviorData = () => apiCall<any>('/behavior/my-data', { method: 'DELETE' });
+export const getGoals = () => apiCall<any>('/behavior/goals');
+export const applyGoals = (ids: string[]) => apiCall<any>('/behavior/goals/apply', { method: 'POST', body: JSON.stringify({ ids }) });
+export const getReminderPlan = () => apiCall<any>('/behavior/reminder-plan');
+export const setReminderSettings = (mode: 'auto' | 'off' | 'fixed', hour?: number) => apiCall<any>('/behavior/reminder-settings', { method: 'PUT', body: JSON.stringify({ mode, hour }) });
+export const getComeback = (barrier?: string) => apiCall<any>(`/behavior/comeback${barrier ? `?barrier=${barrier}` : ''}`);
+export const chooseComeback = (barrier: string, option: string, when?: string) => apiCall<any>('/behavior/comeback', { method: 'POST', body: JSON.stringify({ barrier, option, when }) });
 export const getAgentLoop = () => apiCall<any>('/agent/loop');
 export const actAgent = (action: 'smaller' | 'stop_messages' | 'not_helpful') => apiCall<any>('/agent/act', { method: 'POST', body: JSON.stringify({ action }) });
 
@@ -1575,6 +1581,12 @@ export default {
   syncBehaviorWearable,
   seedBehaviorDemo,
   deleteBehaviorData,
+  getGoals,
+  applyGoals,
+  getReminderPlan,
+  setReminderSettings,
+  getComeback,
+  chooseComeback,
   getAgentLoop,
   actAgent,
   getAssistantHistory,
