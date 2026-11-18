@@ -69,3 +69,6 @@ export function useHashRoute(): string {
   }, []);
   return h;
 }
+
+/** A patient ID worth showing: IDs that only mark sample accounts (they start with "demo") are left out. */
+export const shownId = (id?: string | null) => (id && !/^demo/i.test(id) ? id : null);

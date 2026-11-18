@@ -115,6 +115,7 @@ async def upload_my_photo(file: UploadFile = File(...), db: Session = Depends(ge
         raise HTTPException(502, "The picture could not be saved. Try again in a moment.")
     doctor.profile_image_url = url
     db.commit()
+    photos.forget(-doctor.id)
     return {"photo_url": photos.doctor_photo(doctor)}
 
 
@@ -122,6 +123,7 @@ async def upload_my_photo(file: UploadFile = File(...), db: Session = Depends(ge
 def remove_my_photo(db: Session = Depends(get_db), doctor: Doctor = Depends(get_current_active_doctor)):
     doctor.profile_image_url = None
     db.commit()
+    photos.forget(-doctor.id)
     return {"photo_url": None}
 
 

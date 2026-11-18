@@ -36,3 +36,30 @@ def user_photo(db: Session, user_id: int) -> Optional[str]:
     from app.models.user import UserProfile
     p = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     return absolute(getattr(p, "profile_image_url", None)) if p else None
+
+
+# A call must never wait on the database in the middle of its hand-shake, so the picture of a connected person is read once when they
+# connect (and again when it changes) and kept here for a short while.
+import time as _time
+_CACHE: dict = {}
+TTL = 120.0
+
+
+def remember(key: int, url: Optional[str]) -> None:
+    _CACHE[key] = (url, _time.monotonic() + TTL)
+
+
+def peek(key: int) -> Optional[str]:
+    """What we last knew, without touching the database."""
+    hit = _CACHE.get(key)
+    return hit[0] if hit else None
+
+
+def forget(key: int) -> None:
+    """Called when a picture is added, changed or removed."""
+    _CACHE.pop(key, None)
+
+
+def stale(key: int) -> bool:
+    hit = _CACHE.get(key)
+    return not hit or hit[1] < _time.monotonic()

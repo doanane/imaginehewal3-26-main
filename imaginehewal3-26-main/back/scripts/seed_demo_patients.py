@@ -3,12 +3,12 @@
     python scripts/seed_demo_patients.py            # add or refresh them
     python scripts/seed_demo_patients.py --remove   # delete them again
 
-It never runs on its own, only in development, and every row is marked "(demo)". Run it against the database you are demoing with:
+It never runs on its own, only in development, and every account sits on a reserved address (demo.*@hewal3.local). Run it against the database you are demoing with:
 it writes to whatever DATABASE_URL points at. Readings are stamped "now", so run it just before you show the dashboard.
 
-  Ama Critical (demo)   hypertension, blood pressure 188/122      -> Critical
-  Kofi Stable (demo)    diabetes, readings in range               -> Stable
-  Esi Healthy (demo)    no condition, readings in range           -> Healthy
+  Ama Critical   hypertension, blood pressure 188/122      -> Critical
+  Kofi Stable    diabetes, readings in range               -> Stable
+  Esi Healthy    no condition, readings in range           -> Healthy
 All use the password StrongPass1 and are linked to doctor DOC00001 and the demo caregiver.
 """
 import os
@@ -27,9 +27,9 @@ from app.models.user import User, UserProfile  # noqa: E402
 
 DOCTOR_ID = "DOC00001"
 PEOPLE = [
-    ("demo.critical@hewal3.local", "Ama Critical (demo)", 58, "Female", ["Hypertension"], dict(hr=96, spo2=96.0, sys=188, dia=122, steps=2100)),
-    ("demo.stable@hewal3.local", "Kofi Stable (demo)", 49, "Male", ["Diabetes"], dict(hr=74, spo2=98.0, sys=124, dia=80, steps=6400)),
-    ("demo.healthy@hewal3.local", "Esi Healthy (demo)", 27, "Female", [], dict(hr=68, spo2=99.0, sys=114, dia=72, steps=9800)),
+    ("demo.critical@hewal3.local", "Ama Critical", 58, "Female", ["Hypertension"], dict(hr=96, spo2=96.0, sys=188, dia=122, steps=2100)),
+    ("demo.stable@hewal3.local", "Kofi Stable", 49, "Male", ["Diabetes"], dict(hr=74, spo2=98.0, sys=124, dia=80, steps=6400)),
+    ("demo.healthy@hewal3.local", "Esi Healthy", 27, "Female", [], dict(hr=68, spo2=99.0, sys=114, dia=72, steps=9800)),
 ]
 
 

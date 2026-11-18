@@ -90,7 +90,7 @@ def test_the_trace_can_be_stored_as_json():
 # ------------------------------------------------------------------ the story
 def test_the_story_runs_the_same_rules_and_is_labelled_simulated():
     st = ca.story()
-    assert "Simulated" in st["label"] and "(demo)" in st["moments"][1]["trace"]["person"]["name"]
+    assert "Simulated" in st["label"] and st["moments"][1]["trace"]["person"]["name"] == "Khalid"
     before, lapse, after = (m["trace"] for m in st["moments"])
     assert before["state"] == "ok" and lapse["state"] == "lapse" and lapse["decide"]["send"]["send"]
     assert after["missed_days"] == 0 and after["act"]["status"] == "nothing_to_do"            # back, and the agent goes quiet again
@@ -186,6 +186,6 @@ def test_the_guest_doctor_sees_a_simulated_handoff_and_the_guest_patient_has_a_l
     gp = c.post("/auth/guest", json={"role": "patient"}).json()
     hp = {"Authorization": "Bearer " + gp["access_token"]}
     q = c.get("/doctor-portal/agent/queue", headers=hd).json()["pending"]
-    assert q and q[0]["trace"]["simulated"] and "(demo)" in q[0]["patient"] and q[0]["trace"]["handoff"]["reasons"][0]["code"] == "safety"
+    assert q and q[0]["trace"]["simulated"] and q[0]["patient"] and q[0]["trace"]["handoff"]["reasons"][0]["code"] == "safety"
     loop = c.get("/agent/loop", headers=hp).json()
     assert loop["has_plan"] and loop["state"] == "lapse" and loop["missed_days"] == 4 and not loop["handoff"]["needed"]

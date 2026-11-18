@@ -1,7 +1,7 @@
 """Continue as Guest: a ready-made sandbox for reviewers, with no sign-up.
 
-What it is: ONE demo patient ("Ama Mensah (demo)"), ONE demo doctor and their history, rebuilt on demand so the dates are always recent.
-What it is not: real data. Every name carries "(demo)", the apps show a "Demo data" banner for a guest, and the patient is linked to nobody real.
+What it is: ONE demo patient ("Ama Mensah"), ONE demo doctor and their history, rebuilt on demand so the dates are always recent.
+What it is not: real data. The names are invented, the apps show a "Demo mode" banner for a guest, the accounts live on a reserved e-mail domain, and the patient is linked to nobody real.
 Safety: a guest can never reach anyone outside the sandbox (see `blocked()`), and the sandbox is rebuilt every few hours so what one
 reviewer changes does not stay for the next.
 """
@@ -69,7 +69,7 @@ def ensure_sandbox(db: Session, force: bool = False):
 
     doctor = db.query(Doctor).filter(Doctor.doctor_id == GUEST_DOCTOR_ID).first()
     if not doctor:
-        doctor = Doctor(doctor_id=GUEST_DOCTOR_ID, full_name="Dr. Efua Owusu (demo)", specialization="Internal medicine", hospital="HEWAL3 demo clinic",
+        doctor = Doctor(doctor_id=GUEST_DOCTOR_ID, full_name="Dr. Efua Owusu", specialization="Internal medicine", hospital="HEWAL3 demo clinic",
                         email="doctor" + GUEST_DOMAIN, is_active=True, hashed_password=get_password_hash(random_secret()))
         db.add(doctor); db.commit(); db.refresh(doctor)
     user = db.query(User).filter(User.email == GUEST_EMAIL).first()
@@ -115,7 +115,7 @@ def _build(db: Session, user, doctor) -> None:
     today = date.today()
 
     prof = db.query(UserProfile).filter(UserProfile.user_id == user.id).first() or UserProfile(user_id=user.id)
-    prof.full_name, prof.age, prof.gender = "Ama Mensah (demo)", 52, "Female"
+    prof.full_name, prof.age, prof.gender = "Ama Mensah", 52, "Female"
     prof.chronic_conditions, prof.doctor_id, prof.profile_completed = ["Hypertension"], GUEST_DOCTOR_ID, True
     db.add(prof)
 
@@ -161,21 +161,21 @@ def _build(db: Session, user, doctor) -> None:
                                     "analysis_source": "demo", "category": "meal", "timestamp": at.isoformat()}))
 
     db.add(DoctorAppointment(doctor_pk=doctor.id, patient_id=user.id, starts_at=datetime.now() + timedelta(days=3, hours=2), duration_min=20,
-                            mode="video", reason="Blood pressure review (demo)", status="confirmed", requested_by="doctor"))
+                            mode="video", reason="Blood pressure review", status="confirmed", requested_by="doctor"))
     db.add(DoctorMessage(doctor_pk=doctor.id, patient_id=user.id, sender_role="doctor", created_at=now - timedelta(hours=5),
                          content="Welcome to the HEWAL3 demo. Your readings this week look steady. Keep taking your medicines as planned."))
     # a movement habit that went quiet four days ago, so the care agent has something real to show in the app and on the doctor's patient page
     from app.models.behavior import BehaviorAction, BehaviorPlan, BehaviorSettings
     from app.services import care_agent
-    plan = BehaviorPlan(user_id=user.id, behavior="movement", goal_text="Walk more (demo)", baseline_value=3000.0, goal_value=7000.0, unit="steps", level=3,
+    plan = BehaviorPlan(user_id=user.id, behavior="movement", goal_text="Walk more", baseline_value=3000.0, goal_value=7000.0, unit="steps", level=3,
                         active=True, start_date=today - timedelta(days=14))
     db.add(plan); db.flush()
     for back in range(13, 4, -1):                                                # engaged for nine days, then four quiet days
-        db.add(BehaviorAction(plan_id=plan.id, user_id=user.id, action_date=today - timedelta(days=back), title="Reach 4,500 steps", detail="A small step for today (demo).",
+        db.add(BehaviorAction(plan_id=plan.id, user_id=user.id, action_date=today - timedelta(days=back), title="Reach 4,500 steps", detail="A small step for today.",
                               technique="Goal setting", rationale="Small steps add up.", target_value=4500.0, level=3, is_comeback=False, status="done",
                               value_done=4700.0, source="demo", completed_at=now - timedelta(days=back)))
     db.add(BehaviorSettings(user_id=user.id, language="en", notifications_enabled=True, wearable_data_enabled=False, share_with_doctor=True, max_nudges_per_week=2))
     db.commit()
-    care_agent.demo_handoff(db, user, name="Ama Mensah (demo)", age=52, conditions=["Hypertension"], doctor="Dr. Efua Owusu (demo)", kind="safety")
+    care_agent.demo_handoff(db, user, name="Ama Mensah", age=52, conditions=["Hypertension"], doctor="Dr. Efua Owusu", kind="safety")
     db.commit()
     logger.info("guest sandbox rebuilt")

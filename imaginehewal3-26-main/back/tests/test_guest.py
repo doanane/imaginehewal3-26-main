@@ -12,7 +12,7 @@ def test_guest_patient_gets_a_labelled_sandbox_and_cannot_reach_the_outside():
     assert j["is_guest"] and j["email"].endswith("@guest.hewal3.local")
     h = {"Authorization": f"Bearer {j['access_token']}"}
     prof = c.get("/users/profile", headers=h).json()
-    assert "(demo)" in (prof.get("full_name") or "")
+    assert prof.get("full_name") == "Ama Mensah"
     meds = c.get("/medications", headers=h)
     assert meds.status_code == 200 and len(meds.json() if isinstance(meds.json(), list) else meds.json().get("medications", [])) >= 2
     for method, path in (("post", "/push/register"), ("post", "/auth/change-password"), ("post", "/emergency/sos")):
@@ -26,7 +26,7 @@ def test_guest_doctor_sees_the_demo_patient_only():
     ov = c.get("/doctor-portal/overview", headers=h)
     assert ov.status_code == 200
     names = [p["name"] for p in ov.json().get("patients", [])]
-    assert names and all("(demo)" in n for n in names)
+    assert names and not any("(demo)" in n for n in names)
 
 
 def test_guest_can_be_turned_off(monkeypatch):

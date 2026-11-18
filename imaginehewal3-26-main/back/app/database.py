@@ -147,6 +147,7 @@ def create_tables(preserve_data: bool = True):
             Base.metadata.create_all(bind=engine)
         _ensure_columns()
         _drop_retired_habits()
+        _strip_demo_labels()
 
     except Exception as e:
         logger.error(f"Error creating tables: {e}")
@@ -175,6 +176,26 @@ def _ensure_columns():
                 with engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
                 logger.info("Added column %s.%s", table, name)
+
+
+def _strip_demo_labels():
+    """Earlier sample people were stored as "Name (demo)". The label is no longer wanted on any name, so remove it from rows that already have it.
+    Sample people stay recognisable by their reserved e-mail address and by the "Demo mode" banner, not by their name."""
+    from sqlalchemy import text
+    targets = [("users", "first_name"), ("users", "last_name"), ("user_profiles", "full_name"), ("user_profiles", "emergency_contact_name"),
+               ("doctors", "full_name"), ("medications", "notes"), ("behavior_plans", "goal_text"), ("doctor_appointments", "reason"), ("appointments", "reason")]
+    for table, col in targets:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f"UPDATE {table} SET {col} = REPLACE({col}, ' (demo)', '') WHERE {col} LIKE '%(demo)%'"))
+        except Exception as e:                              # a table or column that this database does not have
+            logger.info("demo label clean-up skipped for %s.%s: %s", table, col, type(e).__name__)
+    if engine.dialect.name == "postgresql":                 # names kept inside the care agent's saved traces
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("UPDATE agent_runs SET trace = REPLACE(trace::text, ' (demo)', '')::json WHERE trace::text LIKE '%(demo)%'"))
+        except Exception as e:
+            logger.info("demo label clean-up skipped for agent_runs: %s", type(e).__name__)
 
 
 def _drop_retired_habits():

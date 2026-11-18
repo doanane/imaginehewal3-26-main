@@ -201,6 +201,8 @@ async def upload_profile_image(
     
     profile.profile_image_url = image_url
     db.commit()
+    from app.services import photos as _photos
+    _photos.forget(current_user.id)
     
     return {
         "message": "Profile image uploaded successfully",

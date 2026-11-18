@@ -9,7 +9,7 @@ activity, sleep, weight, meals, medicines with dose logs, doctor prescriptions a
 issued documents, a chat thread (some unread), habit plans shared with the doctor, and past emergencies for the one in crisis.
 
 It is DEVELOPMENT ONLY (it refuses otherwise), writes to whatever DATABASE_URL points at (check that first: a Neon URL is the live database),
-and every name ends in "(demo)". The numbers are invented for the demo: never present them as results or real patients.
+and every account sits on a reserved address (demo.*@hewal3.local). The numbers are invented for the demo: never present them as results or real patients.
 """
 import os
 import random
@@ -40,42 +40,42 @@ DOMAIN = "@hewal3.local"
 
 # name, email slug, age, gender, conditions, height cm, weight kg, group target, vitals profile, medicines, adherence, steps range
 PEOPLE = [
-    dict(name="Abena Owusu (demo)", slug="demo.abena", age=58, gender="Female", conds=["Hypertension"], h=162, w=84, sys=(150, 176), dia=(94, 108), hr=(78, 98),
+    dict(name="Abena Owusu", slug="demo.abena", age=58, gender="Female", conds=["Hypertension"], h=162, w=84, sys=(150, 176), dia=(94, 108), hr=(78, 98),
          spo2=(95, 97), gl=(92, 112), now=dict(sys=188, dia=122, hr=98, spo2=96), steps=(2200, 4800), adh=0.55,
          meds=[("Amlodipine", "10 mg", ["08:00"]), ("Losartan", "100 mg", ["20:00"])], sos=True, today_appt="15:30",
          complaint="Headache and blurred vision", dx=[("I10", "Essential hypertension")], hist=["Father had a stroke at 61"]),
-    dict(name="Kofi Boateng (demo)", slug="demo.kofi", age=49, gender="Male", conds=["Type 2 diabetes"], h=175, w=92, sys=(124, 138), dia=(78, 88), hr=(70, 82),
+    dict(name="Kofi Boateng", slug="demo.kofi", age=49, gender="Male", conds=["Type 2 diabetes"], h=175, w=92, sys=(124, 138), dia=(78, 88), hr=(70, 82),
          spo2=(96, 98), gl=(142, 226), now=dict(sys=146, dia=92, hr=78, spo2=97), steps=(4200, 8200), adh=0.8,
          meds=[("Metformin", "500 mg", ["08:00", "20:00"]), ("Gliclazide", "80 mg", ["08:00"])], sos=False, today_appt="16:30",
          complaint="Thirst and tiredness", dx=[("E11.9", "Type 2 diabetes mellitus")], hist=["Mother has diabetes"]),
-    dict(name="Esi Quaye (demo)", slug="demo.esi", age=27, gender="Female", conds=[], h=165, w=61, sys=(108, 120), dia=(68, 78), hr=(64, 76),
+    dict(name="Esi Quaye", slug="demo.esi", age=27, gender="Female", conds=[], h=165, w=61, sys=(108, 120), dia=(68, 78), hr=(64, 76),
          spo2=(98, 99), gl=(78, 98), now=dict(sys=114, dia=72, hr=68, spo2=99), steps=(7600, 11800), adh=0.96,
          meds=[("Ferrous sulphate", "200 mg", ["13:00"])], sos=False, today_appt=None,
          complaint="Routine check-up and tiredness", dx=[("Z00.0", "General medical examination")], hist=["No family history of note"]),
-    dict(name="Yaw Darko (demo)", slug="demo.yaw", age=63, gender="Male", conds=["Hypertension", "Type 2 diabetes"], h=170, w=88, sys=(130, 146), dia=(80, 92), hr=(68, 84),
+    dict(name="Yaw Darko", slug="demo.yaw", age=63, gender="Male", conds=["Hypertension", "Type 2 diabetes"], h=170, w=88, sys=(130, 146), dia=(80, 92), hr=(68, 84),
          spo2=(95, 97), gl=(120, 178), now=dict(sys=142, dia=88, hr=76, spo2=96), steps=(3000, 6400), adh=0.88,
          meds=[("Amlodipine", "5 mg", ["08:00"]), ("Metformin", "1000 mg", ["08:00", "20:00"]), ("Atorvastatin", "20 mg", ["21:00"])], sos=False, today_appt=None,
          complaint="Routine review of blood pressure and sugar", dx=[("I10", "Essential hypertension"), ("E11.9", "Type 2 diabetes mellitus")], hist=["Brother had a heart attack at 55"]),
-    dict(name="Akosua Frimpong (demo)", slug="demo.akosua", age=41, gender="Female", conds=["Hypertension"], h=158, w=70, sys=(116, 130), dia=(74, 84), hr=(66, 80),
+    dict(name="Akosua Frimpong", slug="demo.akosua", age=41, gender="Female", conds=["Hypertension"], h=158, w=70, sys=(116, 130), dia=(74, 84), hr=(66, 80),
          spo2=(97, 99), gl=(82, 104), now=dict(sys=122, dia=78, hr=70, spo2=98), steps=(6200, 10400), adh=0.93,
          meds=[("Lisinopril", "10 mg", ["08:00"])], sos=False, today_appt=None,
          complaint="Follow-up after starting treatment", dx=[("I10", "Essential hypertension")], hist=["Mother has hypertension"]),
-    dict(name="Nana Kwesi Appiah (demo)", slug="demo.nana", age=70, gender="Male", conds=["Hypertension", "Heart disease"], h=168, w=79, sys=(128, 148), dia=(76, 90), hr=(60, 92),
+    dict(name="Nana Kwesi Appiah", slug="demo.nana", age=70, gender="Male", conds=["Hypertension", "Heart disease"], h=168, w=79, sys=(128, 148), dia=(76, 90), hr=(60, 92),
          spo2=(93, 96), gl=(88, 118), now=dict(sys=136, dia=84, hr=84, spo2=94), steps=(1800, 4200), adh=0.9,
          meds=[("Amlodipine", "5 mg", ["08:00"]), ("Aspirin", "75 mg", ["13:00"]), ("Bisoprolol", "2.5 mg", ["08:00"])], sos=False, today_appt=None,
          complaint="Breathlessness on stairs", dx=[("I10", "Essential hypertension"), ("I51.9", "Heart disease, unspecified")], hist=["No known family history"]),
 ]
 
 MORE = [  # three more, so groups of five or more exist and the equity table on the Impact page can show figures
-    dict(name="Efua Sarpong (demo)", slug="demo.efua", age=52, gender="Female", conds=["Hypertension", "Type 2 diabetes"], h=160, w=86, sys=(132, 150), dia=(82, 94),
+    dict(name="Efua Sarpong", slug="demo.efua", age=52, gender="Female", conds=["Hypertension", "Type 2 diabetes"], h=160, w=86, sys=(132, 150), dia=(82, 94),
          hr=(70, 86), spo2=(95, 97), gl=(130, 190), now=dict(sys=144, dia=90, hr=80, spo2=96), steps=(2800, 5600), adh=0.75,
          meds=[("Losartan", "50 mg", ["08:00"]), ("Metformin", "500 mg", ["08:00", "20:00"])], sos=False, today_appt=None,
          complaint="Swollen feet and tiredness", dx=[("I10", "Essential hypertension"), ("E11.9", "Type 2 diabetes mellitus")], hist=["Sister has diabetes"]),
-    dict(name="Maame Serwaa (demo)", slug="demo.maame", age=35, gender="Female", conds=["Asthma"], h=166, w=64, sys=(106, 122), dia=(66, 78),
+    dict(name="Maame Serwaa", slug="demo.maame", age=35, gender="Female", conds=["Asthma"], h=166, w=64, sys=(106, 122), dia=(66, 78),
          hr=(68, 84), spo2=(96, 98), gl=(80, 100), now=dict(sys=112, dia=70, hr=74, spo2=97), steps=(6800, 10800), adh=0.92,
          meds=[("Salbutamol inhaler", "100 mcg", ["07:00", "19:00"])], sos=False, today_appt=None,
          complaint="Wheeze at night", dx=[("J45.9", "Asthma, unspecified")], hist=["Brother has asthma"]),
-    dict(name="Kwabena Ofori (demo)", slug="demo.kwabena", age=55, gender="Male", conds=["Hypertension"], h=174, w=90, sys=(132, 148), dia=(82, 94),
+    dict(name="Kwabena Ofori", slug="demo.kwabena", age=55, gender="Male", conds=["Hypertension"], h=174, w=90, sys=(132, 148), dia=(82, 94),
          hr=(70, 86), spo2=(95, 97), gl=(92, 116), now=dict(sys=134, dia=84, hr=76, spo2=96), steps=(3400, 6800), adh=0.82,
          meds=[("Amlodipine", "5 mg", ["08:00"]), ("Hydrochlorothiazide", "12.5 mg", ["08:00"])], sos=False, today_appt=None,
          complaint="Routine blood pressure review", dx=[("I10", "Essential hypertension")], hist=["Father had hypertension"]),
@@ -141,7 +141,7 @@ def build(db, doctor, caregiver, p, password, idx):
     prof.family_history, prof.height, prof.weight, prof.bmi = p["hist"], p["h"], p["w"], bmi
     prof.blood_pressure, prof.heart_rate = f"{p['now']['sys']}/{p['now']['dia']}", p["now"]["hr"]
     prof.blood_glucose = int(sum(p["gl"]) / 2)
-    prof.emergency_contact_name, prof.emergency_contact_phone, prof.emergency_contact_relationship = "Family contact (demo)", "+233 20 000 0000", "Relative"
+    prof.emergency_contact_name, prof.emergency_contact_phone, prof.emergency_contact_relationship = "Family contact", "+233 20 000 0000", "Relative"
     prof.doctor_id, prof.profile_completed = DOCTOR_ID, True
     db.add(prof)
     if caregiver and not db.query(CaregiverRelationship).filter_by(caregiver_id=caregiver.id, patient_id=u.id).first():
@@ -199,7 +199,7 @@ def build(db, doctor, caregiver, p, password, idx):
     # ---- medicines, doses and the doctor's prescriptions
     created = now - timedelta(days=40)
     for nm, dose, times in p["meds"]:
-        med = Medication(user_id=u.id, name=nm, dose=dose, times=times, notes="Prescribed by Dr. Mensah (demo)", active=True, created_at=created)
+        med = Medication(user_id=u.id, name=nm, dose=dose, times=times, notes="Prescribed by Dr. Mensah", active=True, created_at=created)
         db.add(med); db.flush()
         db.add(Prescription(doctor_pk=doctor.id, patient_id=u.id, medication_id=med.id, name=nm, dose=dose, times=times, instructions="Take with water after food.",
                             status="active", created_at=created))

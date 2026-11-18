@@ -236,7 +236,7 @@ def redact(t: dict) -> dict:
 
 # ---------------------------------------------------------------- the story: one person, one moment, real rules on simulated facts
 def story(scenario: str = "lapse") -> dict:
-    """Khalid (demo), a 47-year-old office worker in Abu Dhabi. The same moment twice: without the agent, then with it.
+    """Khalid, a 47-year-old office worker in Abu Dhabi. The same moment twice: without the agent, then with it.
     Every number below is produced by the same functions the live service uses, on SIMULATED facts. Nothing here is real patient data."""
     region = "ae"
     # A Tuesday late morning, Abu Dhabi time (UTC+4), outside Ramadan and outside any prayer window.
@@ -245,10 +245,10 @@ def story(scenario: str = "lapse") -> dict:
     start = today - timedelta(days=21)
     status = {start + timedelta(days=i): "done" for i in range(0, 17)}       # steady for more than two weeks, then silence for four days
     base = {
-        "now": now, "today": today, "name": "Khalid (demo)", "age": 47, "segment": "sedentary", "region": region, "respect_prayer": True, "lang": "en",
+        "now": now, "today": today, "name": "Khalid", "age": 47, "segment": "sedentary", "region": region, "respect_prayer": True, "lang": "en",
         "conditions": [], "behavior": "breaks", "level": 3, "baseline": 1, "goal": 8, "start_date": start, "day_status": status,
         "settings": SimpleNamespace(notifications_enabled=True, reengage_channel="push", max_nudges_per_week=2, quiet_hours_start=21, quiet_hours_end=7, language="en"),
-        "recent": [], "has_supporter": False, "usual_hour": None, "doctor": "Dr. Efua Owusu (demo)", "consented": True, "bp": None, "bp_crisis": False, "sos_active": False,
+        "recent": [], "has_supporter": False, "usual_hour": None, "doctor": "Dr. Efua Owusu", "consented": True, "bp": None, "bp_crisis": False, "sos_active": False,
     }
     quiet_day = today - timedelta(days=4)
     for d in list(status):
@@ -257,7 +257,7 @@ def story(scenario: str = "lapse") -> dict:
     safety = scenario == "safety"
     if safety:
         base.update(bp=(186, 124), bp_crisis=True, conditions=["Hypertension"], segment="chronic")
-        base["name"] = "Khalid (demo)"
+        base["name"] = "Khalid"
     on_track = trace({**base, "day_status": {d: "done" for d in (start + timedelta(days=i) for i in range(0, 21))}, "today": today - timedelta(days=5),
                       "now": now - timedelta(days=5)})
     lapse = trace(base)

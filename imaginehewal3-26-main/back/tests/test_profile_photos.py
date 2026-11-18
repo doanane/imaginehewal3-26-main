@@ -63,6 +63,8 @@ def test_a_call_carries_the_callers_picture_both_ways(env, monkeypatch):
     finally:
         db.close()
 
+    from app.services import photos
+    photos._CACHE.clear()                                   # a picture changed behind the server's back in this test
     dtok, ptok, _ = _tokens(env)
     pid = env["pat"]
     with c.websocket_connect("/ws") as pws, c.websocket_connect("/ws") as dws:

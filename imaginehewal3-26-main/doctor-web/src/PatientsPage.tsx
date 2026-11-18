@@ -4,7 +4,7 @@ import type { Group, Overview } from './types';
 import { Badge, Empty, Skeleton } from './ui';
 import AddPatient from './AddPatient';
 import Rail from './Rail';
-import { ago, bpText, GROUP_LABEL, initials, show } from './util';
+import { ago, bpText, GROUP_LABEL, initials, show, shownId } from './util';
 
 const FILTERS: (Group | 'all')[] = ['all', 'critical', 'monitor', 'stable', 'healthy', 'no_data'];
 
@@ -45,7 +45,7 @@ export default function PatientsPage({ overview, error, unread }: { overview: Ov
                   <span className={`avatar lg ${p.group}`}>{initials(p.name)}</span>
                   <div className="prow-id">
                     <b>{p.name}{unread[p.patient_id] > 0 && <em className="count msg inline" aria-label={`${unread[p.patient_id]} unread`}>{unread[p.patient_id]}</em>}</b>
-                    <small>{[p.age ? `${p.age} yrs` : null, p.gender, p.identifier].filter(Boolean).join(', ')}</small>
+                    <small>{[p.age ? `${p.age} yrs` : null, p.gender, shownId(p.identifier)].filter(Boolean).join(', ')}</small>
                     {p.conditions.length > 0 && <small>{p.conditions.join(', ')}</small>}
                   </div>
                   <div className="prow-status"><Badge group={p.group} />{p.reasons.length > 0 && <small>{p.reasons.join(', ')}</small>}</div>

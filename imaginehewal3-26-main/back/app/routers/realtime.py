@@ -25,6 +25,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models.caregiver import CaregiverRelationship, Doctor
 from app.models.user import User, UserProfile
+from app.services import photos
 from app.realtime import hub
 from app.services import push
 
@@ -59,7 +60,6 @@ def _identity(token: str):
 
 def _photo(key: int):
     """The picture of whoever is calling (doctor or user), or None."""
-    from app.services import photos
     db = SessionLocal()
     try:
         if key < 0:
@@ -129,6 +129,8 @@ async def ws_endpoint(websocket: WebSocket):
 
     contacts = await asyncio.to_thread(_contacts, user_id)
     contacts_at = time.monotonic()
+    if photos.stale(user_id):
+        photos.remember(user_id, await asyncio.to_thread(_photo, user_id))
     await websocket.send_json({"type": "ready", "user_id": user_id, "role": my_role})
     waiting = _pending.pop(user_id, None)
     if waiting and waiting[1] > time.monotonic() and _in_call.get(user_id, (None, None))[1] == waiting[0]["call_id"]:
@@ -173,8 +175,10 @@ async def ws_endpoint(websocket: WebSocket):
                 if not call_id:
                     continue
                 out = {"type": kind, "call_id": call_id, "from_user_id": user_id, "from_name": my_name, "from_role": my_role}
+                if kind == "call.invite" and photos.stale(user_id):
+                    photos.remember(user_id, await asyncio.to_thread(_photo, user_id))       # picked up again after a change
                 if kind in ("call.invite", "call.accept"):
-                    out["from_photo"] = await asyncio.to_thread(_photo, user_id)
+                    out["from_photo"] = photos.peek(user_id)                                  # no database work while a call is being set up
                 if kind == "call.invite":
                     out["media"] = data.get("media") if data.get("media") in CALL_KINDS else "audio"
                     if _in_call.get(to) or _in_call.get(user_id):

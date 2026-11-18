@@ -6,7 +6,7 @@ import DocComposer, { KIND_LABEL } from './DocComposer';
 import { localInput } from './AppointmentsPage';
 import RxPanel from './RxPanel';
 import { Badge, Skeleton } from './ui';
-import { ago, bpText, initials, NA, usePolling, when } from './util';
+import { ago, bpText, initials, NA, usePolling, when, shownId } from './util';
 
 type Save = 'saved' | 'dirty' | 'saving' | 'error';
 const VITALS: { k: keyof ClinicVitals; label: string; unit: string; step: string; warn: (v: number) => boolean }[] = [
@@ -92,7 +92,7 @@ export default function ConsultPage({ id }: { id: number }) {
         <span className={`avatar xl ${p?.group || 'no_data'}`}>{initials(c.patient || 'P')}</span>
         <div className="hero-main">
           <h1>{c.patient || 'Patient'} {p && <Badge group={p.group} />}</h1>
-          <p className="meta">{[p?.age ? `${p.age} years` : null, p?.gender, p?.identifier].filter(Boolean).join(', ')}</p>
+          <p className="meta">{[p?.age ? `${p.age} years` : null, p?.gender, shownId(p?.identifier)].filter(Boolean).join(', ')}</p>
           {p && p.conditions.length > 0 && <div className="tags">{p.conditions.map(x => <span key={x} className="tag">{x}</span>)}</div>}
         </div>
         <div className="hero-side">

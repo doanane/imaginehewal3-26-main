@@ -100,8 +100,10 @@ function SchedRow({ a, next }: { a: TodayAppt; next: boolean }) {
     <li className={`sched-row ${a.status} ${next ? 'next' : ''} ${a.is_now ? 'now' : ''}`}>
       <span className="sr-time"><b>{clock(a.starts_at)}</b><small>{a.duration_min} min</small></span>
       <a className="sr-who" href={`#/patient/${a.patient_id}`}><span className={`avatar ${a.group || ''}`}>{initials(a.patient)}</span><span><b>{a.patient || 'Patient'}</b><small>{a.reason || 'Not given'}</small></span></a>
-      <span className="how"><M.icon size={14} />{M.label}</span>
-      <span className={`status-pill ${next ? 'next' : a.status}`}>{next ? 'Up next' : a.status === 'requested' ? 'Waiting' : a.status}</span>
+      <span className="sr-side">
+        <span className="how"><M.icon size={14} />{M.label}</span>
+        <span className={`status-pill ${next ? 'next' : a.status}`}>{next ? 'Up next' : a.status === 'requested' ? 'Waiting' : a.status}</span>
+      </span>
       <span className="sr-act">
         {a.status === 'requested' ? <a className="btn ghost small" href="#/appointments">Answer</a>
           : a.status === 'completed' && !a.consultation ? <ConsultButton patientId={a.patient_id} appointmentId={a.id} small primary={false} label="Add note" />
