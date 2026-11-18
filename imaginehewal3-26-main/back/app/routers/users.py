@@ -149,6 +149,8 @@ def update_profile(
     
     db.commit()
     db.refresh(profile)
+    from app.services import care_chat
+    care_chat.refresh_doctor(db, current_user.id, "profile")      # the doctor's website refetches the details at once
     
     return {"message": "Profile updated successfully", "profile_completed": profile.profile_completed}
 

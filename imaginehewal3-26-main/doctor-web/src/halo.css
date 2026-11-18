@@ -241,3 +241,7 @@ h3 { font-size: 14px; margin: 14px 0 6px; }
 @media (max-width: 520px) { .grid-kpi { grid-template-columns: minmax(0, 1fr); } }
 .kpi:has(> .kpi-ic) { align-items: start; }
 .kpi:has(> .kpi-ic) .kpi-ic { align-self: start; }
+
+/* a reading that is not current is shown, but muted */
+.prow-v.stale b { color: var(--c-mute); font-weight: 500; }
+.prow-v.stale svg { opacity: .5; }

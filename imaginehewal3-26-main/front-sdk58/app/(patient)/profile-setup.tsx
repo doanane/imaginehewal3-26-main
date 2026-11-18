@@ -1,290 +1,151 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import Animated, { FadeInRight, FadeOutLeft } from 'react-native-reanimated';
-import Slider from '@react-native-community/slider';
-import { Ionicons, MaterialCommunityIcons, ScrollView, Text, TextInput, TouchableOpacity, View } from '../../components/themed';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Alert } from 'react-native';
+import ProtectedRoute from '../../components/ProtectedRoute';
+import { Badge, Banner, Button, Card, Chip, Screen, ScreenHeader, Section, Skeleton, T, TextField } from '../../components/ui';
+import { theme } from '../../constants/theme';
+import api from '../../services/api';
+import { connectHealthKit } from '../../services/healthkit';
+import { useHealthSync } from '../../services/healthSync';
+import { Ionicons, View } from '../../components/themed';
 
-export default function ProfileSetup() {
+const C = theme.COLORS;
+const GENDERS = ['Female', 'Male', 'Other'];
+const CONDITIONS = ['Hypertension', 'Type 2 diabetes', 'Type 1 diabetes', 'Heart disease', 'Asthma', 'Kidney disease', 'Stroke history'];
+
+const num = (s: string): number | undefined => { const n = parseInt(s.replace(/[^\d]/g, ''), 10); return Number.isFinite(n) && n > 0 ? n : undefined; };
+
+/** Edit profile. Everything here is saved to the account, and the doctor you chose sees the same details on their website. */
+export default function EditProfile() {
   const router = useRouter();
-  const brandColor = 'rgb(173, 0, 35)';
-  const [step, setStep] = useState(1);
+  const sync = useHealthSync();
+  const [loaded, setLoaded] = useState(false);
+  const [f, setF] = useState({ name: '', age: '', gender: '', height: '', weight: '', family: '', ecName: '', ecPhone: '', ecRel: '' });
+  const [conditions, setConditions] = useState<string[]>([]);
+  const [doctor, setDoctor] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [skipped, setSkipped] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  // FORM STATE
-  const [formData, setFormData] = useState({
-    personal: { name: '', gender: '', age: '' },
-    conditions: [] as string[],
-    familyHistory: '', // Added for Step 2
-    behavioral: { water: 0, diet: 0, meds: 0, alcohol: 0, sugar: 0, oils: 0, exercise: 0 },
-    metabolic: { bp: 5, cholesterol: 5, glucose: 5, weight: '', height: '', bmi: '' },
-    environmental: { air: null as boolean | null, strokePast: null as boolean | null, strokeNow: null as boolean | null },
-    linkedDevices: [] as string[]
-  });
+  useFocusEffect(useCallback(() => {
+    let live = true;
+    api.getProfile().then((p) => {
+      if (!live) return;
+      setF({ name: p.full_name || '', age: p.age ? String(p.age) : '', gender: p.gender || '', height: p.height ? String(p.height) : '', weight: p.weight ? String(p.weight) : '',
+        family: (p.family_history || []).join(', '), ecName: p.emergency_contact_name || '', ecPhone: p.emergency_contact_phone || '', ecRel: p.emergency_contact_relationship || '' });
+      setConditions(p.chronic_conditions || []);
+      setLoaded(true);
+    }).catch((e) => { if (live) { setError(e?.message || 'Could not load your details.'); setLoaded(true); } });
+    api.getMyDoctor().then((d) => { if (live) setDoctor(d.doctor?.full_name || null); }).catch(() => {});
+    return () => { live = false; };
+  }, []));
 
-  // BMI Calculator Effect
-  useEffect(() => {
-    if (formData.metabolic.weight && formData.metabolic.height) {
-      const w = parseFloat(formData.metabolic.weight);
-      const h = parseFloat(formData.metabolic.height) / 100; 
-      if (h > 0) {
-        const bmiValue = (w / (h * h)).toFixed(1);
-        setFormData(prev => ({ ...prev, metabolic: { ...prev.metabolic, bmi: bmiValue } }));
-      }
-    }
-  }, [formData.metabolic.weight, formData.metabolic.height]);
+  const set = (k: keyof typeof f) => (v: string) => { setSaved(false); setF((p) => ({ ...p, [k]: v })); };
+  const toggle = (c: string) => { setSaved(false); setConditions((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c])); };
+  const extra = conditions.filter((c) => !CONDITIONS.includes(c));          // anything saved earlier stays visible and removable
 
-  const toggleCondition = (c: string) => {
-    setFormData(prev => ({
-      ...prev,
-      conditions: prev.conditions.includes(c) ? prev.conditions.filter(item => item !== c) : [...prev.conditions, c]
-    }));
+  const save = async () => {
+    setError(null);
+    const body: any = { chronic_conditions: conditions, family_history: f.family.split(',').map((x) => x.trim()).filter(Boolean) };
+    if (f.name.trim()) body.full_name = f.name.trim();
+    if (f.gender) body.gender = f.gender;
+    if (num(f.age)) body.age = num(f.age);
+    if (num(f.height)) body.height = num(f.height);
+    if (num(f.weight)) body.weight = num(f.weight);
+    body.emergency_contact_name = f.ecName.trim();
+    body.emergency_contact_phone = f.ecPhone.trim();
+    body.emergency_contact_relationship = f.ecRel.trim();
+    setSaving(true);
+    try { await api.updateProfile(body); api.invalidateApiCache(); setSaved(true); }
+    catch (e: any) { setError(e?.message || 'Could not save. Check your connection and try again.'); }
+    finally { setSaving(false); }
   };
 
-  const nextStep = () => {
-    if (step < 5) setStep(step + 1);
-    else router.replace('/(patient)/(tabs)/today');
+  const connectHealth = async () => {
+    setBusy(true);
+    try {
+      const r = await connectHealthKit();
+      if (r.connected) { await sync.syncNow({ force: true }); return; }
+      Alert.alert('Apple Health', r.reason === 'expo-go' ? 'Apple Health needs the HEWAL3 app build, not Expo Go.'
+        : r.reason === 'android' ? 'Apple Health is available on iPhone only.'
+        : r.reason === 'permission' ? 'Nothing was shared. You can change this any time in Settings > Health > Data Access & Devices > HEWAL3.'
+        : 'Apple Health is not available in this build.');
+    } finally { setBusy(false); }
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => step > 1 ? setStep(step - 1) : router.push('/(patient)/(tabs)/today')} style={styles.backBtn}>
-        <Ionicons name="chevron-back" size={20} color="#333" />
-      </TouchableOpacity>
-      <View style={styles.progressRow}>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <View key={i} style={[styles.progressDot, i <= step ? { backgroundColor: i === step ? brandColor : '#10B981' } : { backgroundColor: '#EEE' }]} />
-        ))}
-      </View>
-      <Text style={styles.stepIndicator}>Step {step} of 5</Text>
-    </View>
-  );
+  const connected = sync.status === 'ok' || sync.status === 'syncing';
 
   return (
-    <View style={styles.container}>
-      {renderHeader()}
+    <ProtectedRoute>
+      <Screen keyboard
+        header={<ScreenHeader title="Edit profile" subtitle="Your details and Apple Health" onBack={() => router.back()} />}
+        footer={<View style={{ padding: 16, backgroundColor: C.card, borderTopWidth: 1, borderTopColor: C.borderLight }}>
+          <Button title={saved ? 'Saved' : 'Save changes'} icon={saved ? 'checkmark' : undefined} onPress={save} loading={saving} disabled={!loaded || saved} />
+        </View>}
+        contentStyle={{ gap: 14, paddingBottom: 32 }}>
+        {error ? <Banner tone="danger" text={error} /> : null}
+        {saved ? <Banner tone="success" text={doctor ? `Saved. ${doctor} sees these details on their website.` : 'Saved. If you choose a doctor, they will see these details.'} /> : null}
 
-      <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-        
-        {/* STEP 1: PERSONAL INFO */}
-        {step === 1 && (
-          <Animated.View entering={FadeInRight} exiting={FadeOutLeft}>
-            <Text style={styles.title}>Personal Info</Text>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              value={formData.personal.name}
-              onChangeText={(t) => setFormData({ ...formData, personal: { ...formData.personal, name: t } })}
-            />
-            <Text style={styles.label}>Gender</Text>
-            <View style={styles.row}>
-              {['Male', 'Female'].map(g => (
-                <TouchableOpacity 
-                  key={g} 
-                  style={[styles.choiceBtn, formData.personal.gender === g && styles.activeChoice]} 
-                  onPress={() => setFormData({...formData, personal: {...formData.personal, gender: g}})}
-                >
-                  <Text style={[styles.choiceText, formData.personal.gender === g && styles.activeChoiceText]}>{g}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.label}>Age</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Age"
-              keyboardType="numeric"
-              value={formData.personal.age}
-              onChangeText={(t) => setFormData({ ...formData, personal: { ...formData.personal, age: t } })}
-            />
-          </Animated.View>
-        )}
-
-        {/* STEP 2: EXISTING CONDITIONS & FAMILY HISTORY */}
-        {step === 2 && (
-          <Animated.View entering={FadeInRight}>
-            <Text style={styles.title}>Health History</Text>
-            
-            <Text style={styles.label}>Current Conditions</Text>
-            <Text style={styles.subtitle}>Select any existing conditions (Pick one or more)</Text>
-            <View style={styles.conditionWrap}>
-              {['Cardiovascular disease', 'Cancer', 'Chronic respiratory disease', 'Diabetes'].map(c => (
-                <TouchableOpacity 
-                  key={c} 
-                  style={[styles.condBtn, formData.conditions.includes(c) && styles.activeCond]}
-                  onPress={() => toggleCondition(c)}
-                >
-                  <Text style={[styles.condText, formData.conditions.includes(c) && styles.activeChoiceText]}>{c}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={{ marginTop: 30 }}>
-              <Text style={styles.label}>Family History</Text>
-              <Text style={styles.subtitle}>Describe any hereditary health conditions in your family.</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Example: My father has hypertension and my maternal grandmother had diabetes..."
-                multiline
-                numberOfLines={4}
-                value={formData.familyHistory}
-                onChangeText={(t) => setFormData({ ...formData, familyHistory: t })}
-                textAlignVertical="top"
-              />
-            </View>
-          </Animated.View>
-        )}
-
-        {/* STEP 3: RISK FACTORS */}
-        {step === 3 && (
-          <Animated.View entering={FadeInRight}>
-            <Text style={styles.title}>Daily Habits</Text>
-            <Text style={styles.subtitle}>Tell us about your everyday routines so we can tailor your recommendations.</Text>
-
-            <Text style={styles.sectionHeader}>1. Behavioral Factors (Days per week)</Text>
-            <View style={styles.riskCard}>
-              {Object.keys(formData.behavioral).map((key) => (
-                <View key={key} style={{ marginBottom: 15 }}>
-                  <Text style={styles.riskLabel}>{key.charAt(0).toUpperCase() + key.slice(1).replace('meds', 'Prescribed Medicine')}: {formData.behavioral[key as keyof typeof formData.behavioral]} days</Text>
-                  <Slider
-                    minimumValue={0} maximumValue={7} step={1}
-                    value={formData.behavioral[key as keyof typeof formData.behavioral]}
-                    onValueChange={(v) => setFormData({ ...formData, behavioral: { ...formData.behavioral, [key]: v } })}
-                    minimumTrackTintColor={brandColor}
-                  />
+        {!loaded ? <Card><Skeleton height={20} width="60%" /><Skeleton height={44} style={{ marginTop: 14 }} /><Skeleton height={44} style={{ marginTop: 14 }} /></Card> : (
+          <>
+            <Section title="About you">
+              <Card>
+                <TextField label="Full name" value={f.name} onChangeText={set('name')} autoCapitalize="words" textContentType="name" />
+                <TextField label="Age" value={f.age} onChangeText={set('age')} keyboardType="number-pad" />
+                <T v="label" color={C.textSecondary} style={{ marginBottom: 6 }}>Gender</T>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                  {GENDERS.map((g) => <Chip key={g} label={g} selected={f.gender === g} onPress={() => { setSaved(false); setF((p) => ({ ...p, gender: g })); }} />)}
                 </View>
-              ))}
-            </View>
-
-            <Text style={styles.sectionHeader}>2. Metabolic Factors</Text>
-            <View style={styles.riskCard}>
-              <Text style={styles.riskLabel}>Blood Pressure (Scale 1-10)</Text>
-              <Slider minimumValue={0} maximumValue={10} value={formData.metabolic.bp} onValueChange={(v) => setFormData({...formData, metabolic: {...formData.metabolic, bp: v}})} minimumTrackTintColor={brandColor} />
-              
-              <Text style={styles.riskLabel}>Glucose Level (Scale 1-10)</Text>
-              <Slider minimumValue={0} maximumValue={10} value={formData.metabolic.glucose} onValueChange={(v) => setFormData({...formData, metabolic: {...formData.metabolic, glucose: v}})} minimumTrackTintColor={brandColor} />
-
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Height (cm)</Text>
-                  <TextInput style={styles.input} placeholder="170" keyboardType="numeric" onChangeText={(t) => setFormData({...formData, metabolic: {...formData.metabolic, height: t}})} />
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <TextField label="Height (cm)" value={f.height} onChangeText={set('height')} keyboardType="number-pad" style={{ flex: 1 }} />
+                  <TextField label="Weight (kg)" value={f.weight} onChangeText={set('weight')} keyboardType="number-pad" style={{ flex: 1 }} />
                 </View>
-                <View style={{ width: 15 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Weight (kg)</Text>
-                  <TextInput style={styles.input} placeholder="70" keyboardType="numeric" onChangeText={(t) => setFormData({...formData, metabolic: {...formData.metabolic, weight: t}})} />
-                </View>
-              </View>
-              {formData.metabolic.bmi !== '' && <Text style={styles.bmiText}>Calculated BMI: {formData.metabolic.bmi}</Text>}
-            </View>
+              </Card>
+            </Section>
 
-            <Text style={styles.sectionHeader}>3. Environmental Factors</Text>
-            <View style={styles.riskCard}>
-              {[
-                { label: 'Exposed to contaminated air?', key: 'air' },
-                { label: 'Have you ever had a stroke?', key: 'strokePast' },
-                { label: 'Currently having a stroke?', key: 'strokeNow' }
-              ].map((q) => (
-                <View key={q.key} style={styles.envRow}>
-                  <Text style={{ flex: 1, fontSize: 14 }}>{q.label}</Text>
-                  <View style={styles.row}>
-                    <TouchableOpacity onPress={() => setFormData({...formData, environmental: {...formData.environmental, [q.key]: true}})} style={[styles.miniBtn, formData.environmental[q.key as keyof typeof formData.environmental] === true && {backgroundColor: brandColor}]}>
-                      <Text style={{color: formData.environmental[q.key as keyof typeof formData.environmental] === true ? 'white' : 'black'}}>Yes</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setFormData({...formData, environmental: {...formData.environmental, [q.key]: false}})} style={[styles.miniBtn, formData.environmental[q.key as keyof typeof formData.environmental] === false && {backgroundColor: brandColor}]}>
-                      <Text style={{color: formData.environmental[q.key as keyof typeof formData.environmental] === false ? 'white' : 'black'}}>No</Text>
-                    </TouchableOpacity>
+            <Section title="Health history">
+              <Card>
+                <T v="label" color={C.textSecondary} style={{ marginBottom: 8 }}>Conditions you live with</T>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                  {[...CONDITIONS, ...extra].map((c) => <Chip key={c} label={c} selected={conditions.includes(c)} onPress={() => toggle(c)} />)}
+                </View>
+                <TextField label="Family history" helper="For example: diabetes, stroke. Separate with commas." value={f.family} onChangeText={set('family')} style={{ marginBottom: 0 }} />
+              </Card>
+            </Section>
+
+            <Section title="Emergency contact">
+              <Card>
+                <TextField label="Name" value={f.ecName} onChangeText={set('ecName')} autoCapitalize="words" />
+                <TextField label="Phone" value={f.ecPhone} onChangeText={set('ecPhone')} keyboardType="phone-pad" />
+                <TextField label="Relationship" value={f.ecRel} onChangeText={set('ecRel')} autoCapitalize="words" style={{ marginBottom: 0 }} />
+              </Card>
+            </Section>
+
+            <Section title="Apple Health">
+              <Card>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="heart-outline" size={24} color={C.primary} />
+                  <View style={{ flex: 1 }}>
+                    <T v="bodyStrong">{connected ? 'Connected' : 'Connect Apple Health'}</T>
+                    <T v="caption" color={C.textSecondary}>Steps, heart rate, sleep and more flow in on their own. You choose what is shared, and can stop any time.</T>
                   </View>
+                  {connected ? <Badge label="On" tone="success" /> : null}
                 </View>
-              ))}
-            </View>
-          </Animated.View>
+                {!connected && !skipped ? (
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                    <Button title="Connect" icon="heart" onPress={connectHealth} loading={busy} style={{ flex: 1 }} />
+                    <Button title="Skip for now" variant="secondary" onPress={() => setSkipped(true)} style={{ flex: 1 }} />
+                  </View>
+                ) : null}
+                {!connected && skipped ? <T v="caption" color={C.textSecondary} style={{ marginTop: 12 }}>Skipped. You can connect any time under Profile, Connected devices.</T> : null}
+                <T v="caption" color={C.textSecondary} style={{ marginTop: 12 }}>Watches, blood pressure cuffs and glucose meters that write to Apple Health appear here once Apple Health is connected.</T>
+              </Card>
+            </Section>
+          </>
         )}
-
-        {/* STEP 4: DEVICE LINKING */}
-        {step === 4 && (
-          <Animated.View entering={FadeInRight}>
-            <Text style={styles.title}>Device Linking</Text>
-            {[
-              { name: 'Smartwatch', icon: 'watch' },
-              { name: 'BP Monitor', icon: 'heart-pulse' },
-              { name: 'Glucose Meter', icon: 'water' }
-            ].map((d) => (
-              <View key={d.name} style={styles.deviceItem}>
-                <MaterialCommunityIcons name={d.icon as any} size={30} color={brandColor} />
-                <Text style={styles.deviceName}>{d.name}</Text>
-                <TouchableOpacity style={styles.connectBtn} onPress={() => Alert.alert("Bluetooth", `Searching for ${d.name}...`)}>
-                  <Text style={styles.connectText}>Connect</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </Animated.View>
-        )}
-
-        {/* STEP 5: SUMMARY */}
-        {step === 5 && (
-          <Animated.View entering={FadeInRight}>
-            <Text style={styles.title}>Review Summary</Text>
-            <View style={styles.summarySection}>
-              <Text style={styles.summaryTitle}>Personal & Medical</Text>
-              <Text>Name: {formData.personal.name || 'N/A'}</Text>
-              <Text>Conditions: {formData.conditions.join(', ') || 'None'}</Text>
-              <Text>Family History: {formData.familyHistory ? 'Provided' : 'None'}</Text>
-            </View>
-            <View style={styles.summarySection}>
-              <Text style={styles.summaryTitle}>Health Metrics</Text>
-              <Text>BMI: {formData.metabolic.bmi || 'Not calculated'}</Text>
-              <Text>Physical Activity: {formData.behavioral.exercise} days/wk</Text>
-              <Text>High BP Risk: {formData.metabolic.bp > 7 ? 'Yes' : 'No'}</Text>
-            </View>
-          </Animated.View>
-        )}
-
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity style={[styles.mainBtn, { backgroundColor: brandColor }]} onPress={nextStep}>
-          <Text style={styles.mainBtnText}>{step === 5 ? 'Complete Profile' : 'Continue'}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      </Screen>
+    </ProtectedRoute>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'white' },
-  header: { paddingTop: 60, paddingHorizontal: 20, alignItems: 'center' },
-  backBtn: { position: 'absolute', left: 20, top: 60, width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center' },
-  progressRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  progressDot: { height: 4, width: 40, borderRadius: 2 },
-  stepIndicator: { color: '#666', fontSize: 12 },
-  scrollBody: { padding: 25 },
-  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 10 },
-  subtitle: { color: '#666', marginBottom: 15, fontSize: 13, lineHeight: 18 },
-  label: { fontSize: 15, fontWeight: '600', marginBottom: 8, marginTop: 10, color: '#333' },
-  input: { backgroundColor: '#F8F9FA', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#EEE', marginBottom: 15 },
-  textArea: { height: 100, paddingTop: 15 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  choiceBtn: { flex: 1, padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#EEE', alignItems: 'center' },
-  activeChoice: { backgroundColor: 'rgb(173, 0, 35)', borderColor: 'rgb(173, 0, 35)' },
-  choiceText: { fontWeight: '600' },
-  activeChoiceText: { color: 'white' },
-  conditionWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  condBtn: { padding: 12, borderRadius: 20, borderWidth: 1, borderColor: '#EEE' },
-  activeCond: { backgroundColor: 'rgb(173, 0, 35)', borderColor: 'rgb(173, 0, 35)' },
-  condText: { fontSize: 13 },
-  sectionHeader: { fontSize: 16, fontWeight: '700', marginTop: 20, marginBottom: 10, color: 'rgb(173, 0, 35)' },
-  riskCard: { backgroundColor: '#F8F9FA', padding: 15, borderRadius: 15, marginBottom: 15 },
-  riskLabel: { fontSize: 13, color: '#444', marginBottom: 5, fontWeight: '500' },
-  bmiText: { marginTop: 10, fontWeight: 'bold', color: '#10B981', textAlign: 'right' },
-  envRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-  miniBtn: { paddingHorizontal: 15, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#EEE', marginLeft: 10 },
-  deviceItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', padding: 18, borderRadius: 15, marginBottom: 12 },
-  deviceName: { flex: 1, marginLeft: 15, fontWeight: '700', fontSize: 16 },
-  connectBtn: { backgroundColor: 'rgba(11, 110, 110, 0.1)', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 25 },
-  connectText: { color: 'rgb(173, 0, 35)', fontWeight: 'bold' },
-  summarySection: { backgroundColor: '#F8F9FA', padding: 15, borderRadius: 12, marginBottom: 10 },
-  summaryTitle: { fontWeight: 'bold', color: 'rgb(173, 0, 35)', marginBottom: 5 },
-  footer: { padding: 25 },
-  mainBtn: { height: 55, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
-  mainBtnText: { color: 'white', fontSize: 18, fontWeight: 'bold' }
-});

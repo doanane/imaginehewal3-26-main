@@ -153,10 +153,12 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
           })}
         </nav>
         <div className="side-foot">
-          <div className={`live ${online ? '' : 'off'}`} aria-live="polite">
-            {online ? <span className="pulse" /> : <WifiOff size={14} />}
-            {!online ? 'Offline, retrying' : live ? 'Live, instant updates' : `Updating every 30 s${updated ? `, ${updated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`}
-          </div>
+          {(!online || live) && (
+            <div className={`live ${online ? '' : 'off'}`} aria-live="polite">
+              {online ? <span className="pulse" /> : <WifiOff size={14} />}
+              {online ? 'Live, instant updates' : 'Offline, retrying'}
+            </div>
+          )}
         </div>
       </aside>
       <main className="main" id="content">

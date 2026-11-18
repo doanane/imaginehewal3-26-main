@@ -18,7 +18,7 @@ export function ago(iso: string | null): string {
 }
 export const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
 
-export const GROUP_LABEL: Record<string, string> = { critical: 'Critical', monitor: 'Monitor', stable: 'Stable', healthy: 'Healthy', no_data: 'No data' };
+export const GROUP_LABEL: Record<string, string> = { critical: 'Critical', monitor: 'Monitor', stable: 'Stable', healthy: 'Healthy', no_data: 'No recent data' };
 export const SOS_LABEL: Record<string, string> = {
   pending: 'Patient can still cancel', active: 'Waiting for a caregiver', acknowledged: 'Caregiver is responding',
   escalated: 'Escalated to emergency services', resolved: 'Resolved', cancelled: 'Cancelled by patient',

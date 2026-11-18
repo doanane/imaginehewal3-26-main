@@ -49,10 +49,20 @@ export default function PatientsPage({ overview, error, unread }: { overview: Ov
                     {p.conditions.length > 0 && <small>{p.conditions.join(', ')}</small>}
                   </div>
                   <div className="prow-status"><Badge group={p.group} />{p.reasons.length > 0 && <small>{p.reasons.join(', ')}</small>}</div>
-                  <div className="prow-v" title="Heart rate"><Heart size={15} /><b>{show(p.vitals.heart_rate)}</b><small>bpm</small></div>
-                  <div className="prow-v" title="Blood pressure"><Droplets size={15} /><b>{bpText(p.vitals.systolic, p.vitals.diastolic)}</b><small>mmHg</small></div>
-                  <div className="prow-v" title="Steps today"><Footprints size={15} /><b>{p.vitals.steps === null ? 'n/a' : p.vitals.steps.toLocaleString()}</b><small>steps</small></div>
-                  <div className="prow-when"><small>{ago(p.vitals.at)}</small></div>
+                  {(() => {
+                    const old = p.last_reading;                                   // no reading in the last 24 hours: show the newest one we hold, plainly marked as not current
+                    const hr = p.vitals.heart_rate ?? old?.heart_rate ?? null;
+                    const sys = p.vitals.systolic ?? old?.systolic ?? null, dia = p.vitals.diastolic ?? old?.diastolic ?? null;
+                    const stale = !!old && p.vitals.at === null;
+                    return (
+                      <>
+                        <div className={`prow-v ${stale ? 'stale' : ''}`} title={stale ? 'Last heart rate, not current' : 'Heart rate'}><Heart size={15} /><b>{show(hr)}</b><small>bpm</small></div>
+                        <div className={`prow-v ${stale ? 'stale' : ''}`} title={stale ? 'Last blood pressure, not current' : 'Blood pressure'}><Droplets size={15} /><b>{bpText(sys, dia)}</b><small>mmHg</small></div>
+                        <div className="prow-v" title="Steps today"><Footprints size={15} /><b>{p.vitals.steps === null ? 'n/a' : p.vitals.steps.toLocaleString()}</b><small>steps</small></div>
+                        <div className="prow-when"><small>{stale ? `Last reading ${ago(old!.at)}` : ago(p.vitals.at)}</small></div>
+                      </>
+                    );
+                  })()}
                   <ChevronRight size={18} className="chev" />
                 </a>
               </li>

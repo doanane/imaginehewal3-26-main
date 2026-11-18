@@ -84,6 +84,16 @@ def latest_vitals(db: Session, user_id: int) -> Dict[str, Any]:
     return out
 
 
+def last_known(db: Session, user_id: int) -> Optional[Dict[str, Any]]:
+    """The newest stored reading whatever its age, so a screen can say "last reading 3 days ago: 188/122" instead of a bare "no data".
+    It is never used to judge status: only readings from the last 24 hours do that."""
+    v = db.query(VitalReading).filter(VitalReading.user_id == user_id).order_by(VitalReading.timestamp.desc()).first()
+    if not v:
+        return None
+    return {"heart_rate": v.heart_rate, "blood_oxygen": v.blood_oxygen, "systolic": v.blood_pressure_systolic,
+            "diastolic": v.blood_pressure_diastolic, "at": iso(v.timestamp)}
+
+
 def _group(status: str, conditions: list) -> str:
     """The clinician's triage group: critical, monitor (readings drifting), stable (a condition, readings in range), healthy (no condition, in range)."""
     if status in ("critical", "monitor", "no_data"):
@@ -106,6 +116,7 @@ def snapshot(db: Session, user: User, profile: Optional[UserProfile]) -> Dict[st
         "age": profile.age if profile else None, "gender": profile.gender if profile else None,
         "conditions": (profile.chronic_conditions if profile else None) or [],
         "vitals": vit,
+        "last_reading": None if has_data else last_known(db, user.id),
         "status": cls["status"] if has_data else "no_data",
         "group": _group(cls["status"] if has_data else "no_data", (profile.chronic_conditions if profile else None) or []),
         "reasons": cls["reasons"],

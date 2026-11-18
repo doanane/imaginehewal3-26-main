@@ -85,3 +85,26 @@ def test_a_call_carries_the_callers_picture_both_ways(env, monkeypatch):
 
     detail = c.get(f"/doctor-portal/patients/{pid}", headers=hd).json()
     assert detail["patient"]["photo_url"].endswith("patient.jpg")
+
+
+def test_a_profile_edit_reaches_the_doctor(env):
+    """The patient saves new details in the app; the doctor's website shows them, and is told to refresh."""
+    c = env["client"]
+    _, hd = login(c)
+    dtok, ptok, _ = _tokens(env)
+    pid = env["pat"]
+    with c.websocket_connect("/ws") as dws:
+        ready = _auth(dws, dtok)
+        assert ready["role"] == "doctor"
+        r = c.put("/users/profile", headers=env["hp"], json={"full_name": "Efua Sarpong", "age": 53, "weight": 82, "height": 165,
+                                                           "chronic_conditions": ["Hypertension", "Asthma"], "family_history": ["Stroke"],
+                                                           "emergency_contact_name": "Kojo Sarpong", "emergency_contact_phone": "+233200000000"})
+        assert r.status_code == 200
+        got = dws.receive_json()
+        while got["type"] != "care.refresh":
+            got = dws.receive_json()
+        assert got["patient_id"] == pid and got["reason"] == "profile"
+    d = c.get(f"/doctor-portal/patients/{pid}", headers=hd).json()
+    assert d["patient"]["name"] == "Efua Sarpong" and d["patient"]["age"] == 53
+    assert set(d["patient"]["conditions"]) == {"Hypertension", "Asthma"}
+    assert d["profile"]["weight"] == 82 and d["profile"]["height"] == 165
