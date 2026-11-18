@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { Building2, CalendarClock, CalendarDays, ClipboardCheck, MessageSquare, Phone, Siren, Video } from 'lucide-react';
-import { getCohort, getToday, TodayAppt } from './api';
+import { getCohort, getPatient, getToday, TodayAppt } from './api';
 import ConsultButton from './ConsultButton';
+import Rail from './Rail';
 import { realtime } from './realtime';
 import type { Overview } from './types';
 import { Badge, CountUp, Empty, Skeleton } from './ui';
@@ -29,10 +30,11 @@ export default function TodayPage({ overview, error }: { overview: Overview | nu
   const attention = (s?.critical ?? 0) + (s?.monitor ?? 0);
   const next = t?.next_up || null;
   const nextAppt = next ? t?.appointments.find(a => a.id === next.id) : undefined;
-  const NM = nextAppt ? (MODE[nextAppt.mode] || MODE.in_person) : null;
+  const focusId: number | null = nextAppt?.patient_id ?? t?.appointments[0]?.patient_id ?? cohort.data?.review_queue[0]?.patient_id ?? null;
 
   return (
-    <>
+    <div className="rail-layout">
+    <div className="rail-main">
       <header className="page-head">
         <div><h1>{greet}, Dr {surname}</h1><p>{dateText}. {sub}</p></div>
         <a className="btn primary" href="#/schedule"><CalendarDays size={17} />Open schedule</a>
@@ -53,6 +55,7 @@ export default function TodayPage({ overview, error }: { overview: Overview | nu
       )}
 
       <div className="today-grid">
+        <div className="stack">
         <section className="card">
           <div className="card-head"><h2>Today's schedule</h2><small>{t ? `${t.appointments.length} listed` : ''}</small></div>
           {!t ? <Skeleton h={220} /> : t.appointments.length === 0 ? (
@@ -64,43 +67,30 @@ export default function TodayPage({ overview, error }: { overview: Overview | nu
           )}
         </section>
 
-        <div className="stack">
-          {nextAppt && NM && (
-            <section className="card next-card">
-              <div className="next-top">
-                <span className={`avatar lg ${nextAppt.group || ''}`}>{initials(nextAppt.patient)}</span>
-                <div><b>{nextAppt.patient || 'Patient'}</b><small>{[nextAppt.age ? `${nextAppt.age} yrs` : null, nextAppt.gender].filter(Boolean).join(', ') || 'Next patient'}</small></div>
-                <span className="status-pill next"><NM.icon size={13} />{NM.label}</span>
-              </div>
-              <dl className="next-facts">
-                <dt>Time</dt><dd>{clock(nextAppt.starts_at)} to {clock(new Date(new Date(nextAppt.starts_at).getTime() + nextAppt.duration_min * 60000).toISOString())}</dd>
-                <dt>Reason</dt><dd>{nextAppt.reason || 'General review'}</dd>
-                {nextAppt.group && <><dt>Status</dt><dd><Badge group={nextAppt.group} /></dd></>}
-              </dl>
-              <div className="next-actions">
-                <ConsultButton patientId={nextAppt.patient_id} appointmentId={nextAppt.id} existing={nextAppt.consultation} label="Begin consultation" />
-                <a className="btn ghost" href={`#/patient/${nextAppt.patient_id}`}>Open chart</a>
-              </div>
+            <section className="card">
+              <div className="card-head"><h2>Review first</h2><a href="#/panel">Panel health</a></div>
+              {!cohort.data ? <Skeleton h={100} /> : cohort.data.review_queue.length === 0 ? (
+                <Empty icon={<ClipboardCheck size={26} />} title="Nothing needs review">Every patient has recent readings inside their usual range.</Empty>
+              ) : (
+                <ul className="queue">
+                  {cohort.data.review_queue.map(q => (
+                    <li key={q.patient_id}>
+                      <a href={`#/patient/${q.patient_id}`}><span className={`avatar ${q.group || ''}`}>{initials(q.name)}</span><div><b>{q.name}</b><small>{q.why.length ? q.why.join(', ') : 'Flagged'}</small></div><Badge group={q.group} /></a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
-          )}
+        </div>
 
-          <section className="card">
-            <div className="card-head"><h2>Review first</h2><a href="#/panel">Panel health</a></div>
-            {!cohort.data ? <Skeleton h={100} /> : cohort.data.review_queue.length === 0 ? (
-              <Empty icon={<ClipboardCheck size={26} />} title="Nothing needs review">Every patient has recent readings inside their usual range.</Empty>
-            ) : (
-              <ul className="queue">
-                {cohort.data.review_queue.map(q => (
-                  <li key={q.patient_id}>
-                    <a href={`#/patient/${q.patient_id}`}><span className={`avatar ${q.group || ''}`}>{initials(q.name)}</span><div><b>{q.name}</b><small>{q.why.length ? q.why.join(', ') : 'Flagged'}</small></div><Badge group={q.group} /></a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+        <div className="stack">
+          {focusId != null && <FocusPatient id={focusId} appt={nextAppt || t?.appointments.find(x => x.patient_id === focusId) || null} isNext={!!nextAppt} />}
+
         </div>
       </div>
-    </>
+    </div>
+    <Rail />
+    </div>
   );
 }
 
@@ -118,5 +108,62 @@ function SchedRow({ a, next }: { a: TodayAppt; next: boolean }) {
             : <ConsultButton patientId={a.patient_id} appointmentId={a.id} existing={a.consultation} small />}
       </span>
     </li>
+  );
+}
+
+/** One patient in focus: the next visit, or the first person to review. Real readings only: the blood pressure line is drawn from stored readings, never filled in. */
+function FocusPatient({ id, appt, isNext }: { id: number; appt: TodayAppt | null; isNext: boolean }) {
+  const d = usePolling(() => getPatient(id), 60000, [id]);
+  const p = d.data;
+  if (!p) return <section className="card"><Skeleton h={260} /></section>;
+  const pts = p.vitals_series.filter(v => v.systolic != null && v.diastolic != null).slice(-30);
+  const last = pts[pts.length - 1];
+  const meds = p.medications.slice(0, 4);
+  const when = appt ? `${clock(appt.starts_at)}${appt.reason ? `, ${appt.reason}` : ''}` : 'Not booked today';
+  const M = appt ? (MODE[appt.mode] || MODE.in_person) : null;
+  return (
+    <section className="card focus">
+      <div className="focus-top">
+        <span className={`avatar lg ${p.patient.group || ''}`}>{initials(p.patient.name)}</span>
+        <div><b>{p.patient.name}</b><small>{[p.patient.age ? `${p.patient.age} yrs` : null, p.patient.gender].filter(Boolean).join(', ')}</small></div>
+        <Badge group={p.patient.group} />
+      </div>
+      <p className="focus-when"><span>{isNext ? 'Next visit' : appt ? 'Today' : 'Review first'}</span>{when}{M && <em><M.icon size={14} />{M.label}</em>}</p>
+
+      <div className="focus-bp">
+        <div className="focus-bp-head"><span>Blood pressure, recent readings</span>{last && <b>{last.systolic}/{last.diastolic}<i> mmHg</i></b>}</div>
+        {pts.length >= 2 ? <BpLine pts={pts as { systolic: number; diastolic: number }[]} /> : <p className="muted">{pts.length === 1 ? 'Only one reading so far.' : 'No blood pressure readings yet.'}</p>}
+      </div>
+
+      <div className="focus-meds">
+        <span className="focus-label">Medicines today</span>
+        {meds.length === 0 ? <p className="muted">None recorded.</p> : (
+          <ul>{meds.map(m => { const due = m.doses.length, took = m.doses.filter(x => x.taken).length; return <li key={m.name}><b>{m.name}</b>{m.dose && <small>{m.dose}</small>}<em className={due && took === due ? 'ok' : ''}>{due ? `${took} of ${due} taken` : 'No dose today'}</em></li>; })}</ul>
+        )}
+      </div>
+
+      <div className="next-actions">
+        {appt ? <ConsultButton patientId={appt.patient_id} appointmentId={appt.id} existing={appt.consultation} label="Begin consultation" /> : null}
+        <a className="btn ghost" href={`#/patient/${id}`}>Open chart</a>
+      </div>
+    </section>
+  );
+}
+
+/** Two honest lines, systolic and diastolic, scaled to the readings shown. */
+function BpLine({ pts }: { pts: { systolic: number; diastolic: number }[] }) {
+  const W = 520, H = 120, P = 8;
+  const all = pts.flatMap(p => [p.systolic, p.diastolic]);
+  const lo = Math.min(...all) - 8, hi = Math.max(...all) + 8;
+  const x = (i: number) => P + (i * (W - 2 * P)) / (pts.length - 1);
+  const y = (v: number) => H - P - ((v - lo) / (hi - lo)) * (H - 2 * P);
+  const line = (k: 'systolic' | 'diastolic') => pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[k]).toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  return (
+    <svg className="bp-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Blood pressure over the last ${pts.length} readings, now ${last.systolic} over ${last.diastolic}`}>
+      <line x1={P} x2={W - P} y1={y(130)} y2={y(130)} className="bp-ref" />
+      <path d={line('diastolic')} className="bp-dia" /><path d={line('systolic')} className="bp-sys" />
+      <path d={`M${x(pts.length - 1)},${y(last.systolic)}h0`} className="bp-dot" /><path d={`M${x(pts.length - 1)},${y(last.diastolic)}h0`} className="bp-dot dia" />
+    </svg>
   );
 }

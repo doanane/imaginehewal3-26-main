@@ -17,7 +17,7 @@ export function tap() { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).c
 /** Fades and slides a block up. Use `index` to stagger a list of blocks. */
 export function Reveal({ index = 0, children, style }: { index?: number; children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const themed = useThemedStyle(style);
-  return <Animated.View entering={FadeInDown.delay(index * 70).springify().damping(18)} style={themed}>{children}</Animated.View>;
+  return <Animated.View style={themed}>{children}</Animated.View>;                    // no entrance animation: content is simply there
 }
 
 /** Pressable that springs down slightly while pressed. */
@@ -30,7 +30,7 @@ export function PressScale({ children, onPress, style, containerStyle, label, ha
   return (
     <Pressable
       onPress={() => { if (haptic) tap(); onPress?.(); }}
-      onPressIn={() => { scale.value = withSpring(0.95, { damping: 15, stiffness: 300 }); }}
+      onPressIn={() => { scale.value = withSpring(0.98, { damping: 18, stiffness: 320 }); }}
       onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 260 }); }}
       accessibilityRole="button" accessibilityLabel={label}
       style={containerStyle}

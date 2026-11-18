@@ -5,7 +5,7 @@ import {
   Avatar, Badge, Banner, Button, Card, Chip, IconName, ListRow, Screen, Section, LanguageSwitch, Skeleton, T, ThemeToggle,
 } from '../../../components/ui';
 import { QuickTile, useQuickTileWidth } from '../../../components/ui/QuickTile';
-import { AmbientOrb, DepthSurface, PressScale, ProgressRing, Pulse, Reveal } from '../../../components/ui/motion';
+import { PressScale, ProgressRing, Pulse } from '../../../components/ui/motion';
 import { BARRIERS, BEHAVIORS, EMERGENCY_NUMBER } from '../../../constants/behavior';
 import { QUICK } from '../../../constants/quickActions';
 import { theme } from '../../../constants/theme';
@@ -22,9 +22,15 @@ import { translateText } from '../../../i18n/translate';
 import { useHealthSync } from '../../../services/healthSync';
 import { profileImageSource } from '../../../services/imageUrl';
 import { useUnreadNotifications } from '../../../services/useBadge';
-import { Image, Ionicons, LinearGradient, RefreshControl, View } from '../../../components/themed';
+import { Image, Ionicons, RefreshControl, View } from '../../../components/themed';
 
 const C = theme.COLORS;
+
+/** Plain wrapper. Blocks used to fade in one after another; nothing here needs to announce itself. */
+function Reveal({ children, style }: { children: React.ReactNode; index?: number; style?: any }) { return <View style={style}>{children}</View>; }
+
+const when = (iso: string) => new Date(iso).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const MODE_LABEL: Record<string, string> = { in_person: 'In person', video: 'Video visit', phone: 'Phone call' };
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -132,6 +138,7 @@ export default function Today() {
   const healthKit = hs.snapshot;
   const [act, setAct] = useState<ActivitySummary | null>(null);
   const [rank, setRank] = useState<{ rank: number; of: number } | null>(null);
+  const [appt, setAppt] = useState<any>(null);          // the next confirmed visit with the person's doctor, if any
 
   const load = useCallback(async () => {
     // The dashboard is the critical first paint. Optional panels must not block it.
@@ -164,6 +171,10 @@ export default function Today() {
   useFocusEffect(useCallback(() => {
     api.getDailyTip(lang).then((r) => setTip(r.tip ? { text: r.tip, ai: !!r.ai } : null)).catch(() => {});
     api.getMedicationsToday().then(setMeds).catch(() => {});
+    api.getDoctorAppointments().then((r) => {
+      const next = (r.appointments || []).filter((a) => a.status === 'confirmed' && Date.parse(a.starts_at) > Date.now() - 3600e3).sort((x, y) => Date.parse(x.starts_at) - Date.parse(y.starts_at))[0];
+      setAppt(next ?? null);
+    }).catch(() => setAppt(null));
     api.getWellbeingDue().then((d) => setWbDue(d.due)).catch(() => {});
   }, [lang]));
   // When new figures were just sent to the backend, read the rings and vitals again so Home matches what was synced.
@@ -252,29 +263,24 @@ export default function Today() {
         </View>
       </Reveal>
 
-      {/* Hero: health score */}
+      {/* Today's goals: one flat card with the ring, and the figures behind it */}
       <Reveal index={1}>
-        <DepthSurface label="Health score">
-          {/* the shadow sits on a solid-coloured wrapper: a shadow on a gradient view is slow to draw */}
-          <View style={{ borderRadius: 24, backgroundColor: '#0B6E6E', ...theme.SHADOWS.medium }}>
-          <LinearGradient colors={['#0B6E6E', '#0A7C99']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 24, padding: 20, overflow: 'hidden' }}>
-          <AmbientOrb size={170} color="rgba(255,255,255,0.10)" style={{ position: 'absolute', right: -40, top: -40 }} />
-          <AmbientOrb size={130} color="rgba(255,255,255,0.07)" style={{ position: 'absolute', right: 30, bottom: -60 }} />
-          <View style={{ position: 'absolute', left: -50, bottom: -80, width: 180, height: 180, borderRadius: 90, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }} />
+        <View accessible accessibilityLabel={`Today's goals. ${label.title}. ${score != null ? Math.round(score) + ' percent of goals met' : 'No score yet'}`}
+          style={{ borderRadius: 20, backgroundColor: C.primary, padding: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <T v="overline" color="rgba(255,255,255,0.85)">Today's goals</T>
+              <T v="label" color="rgba(255,255,255,0.85)">Today's goals</T>
               <T v="title" color="#fff" style={{ fontSize: 26, lineHeight: 32, marginTop: 4 }}>{label.title}</T>
-              <T v="caption" color="rgba(255,255,255,0.9)" style={{ marginTop: 4 }}>{label.tone}</T>
+              <T v="caption" color="rgba(255,255,255,0.92)" style={{ marginTop: 4 }}>{label.tone}</T>
               {trend != null && score != null ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
                   <Ionicons name={trend >= 0 ? 'trending-up' : 'trending-down'} size={16} color="#fff" />
                   <T v="label" color="#fff">{trend >= 0 ? '+' : ''}{Math.round(trend)}% this week</T>
                 </View>) : null}
             </View>
-            <ProgressRing value={score ?? 0} size={132} stroke={11}>
-              <T v="display" color="#fff" style={{ fontSize: 32, lineHeight: 38 }}>{score != null ? `${Math.round(score)}%` : '--'}</T>
-              <T v="caption" color="rgba(255,255,255,0.85)" numberOfLines={1} style={{ marginTop: -4, fontSize: 13 }}>of goals met</T>
+            <ProgressRing value={score ?? 0} size={124} stroke={11}>
+              <T v="display" color="#fff" style={{ fontSize: 30, lineHeight: 36 }}>{score != null ? `${Math.round(score)}%` : '--'}</T>
+              <T v="caption" color="rgba(255,255,255,0.88)" numberOfLines={1} style={{ marginTop: -4, fontSize: 13 }}>of goals met</T>
             </ProgressRing>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
@@ -285,23 +291,39 @@ export default function Today() {
             {bp ? <HeroChip icon="pulse" text={`${bp} mmHg`} /> : null}
             {healthKit ? <HeroChip icon="fitness" text="Apple Health synced" /> : null}
           </View>
-          </LinearGradient>
-          </View>
-        </DepthSurface>
+        </View>
       </Reveal>
+
+      {/* The next visit with the person's doctor */}
+      {appt ? (
+        <Reveal index={2} style={{ marginTop: 16 }}>
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <T v="label" color={C.textSecondary}>Next appointment</T>
+              <T v="label" color={C.primary}>{(() => { const d = Math.ceil((Date.parse(appt.starts_at) - Date.now()) / 86400e3); return d <= 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`; })()}</T>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
+              <Avatar name={appt.doctor || 'Doctor'} size={48} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <T v="heading" numberOfLines={1}>{appt.doctor || 'Your doctor'}</T>
+                <T v="caption" color={C.textSecondary}>{when(appt.starts_at)}, {MODE_LABEL[appt.mode] || appt.mode}</T>
+                {appt.reason ? <T v="caption" color={C.textSecondary} numberOfLines={1}>{appt.reason}</T> : null}
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+              <Button title="View details" onPress={() => router.push('/(patient)/doctor-appointments' as any)} style={{ flex: 1 }} />
+              <Button title="Message" variant="secondary" onPress={() => router.push('/(patient)/doctor-chat' as any)} style={{ flex: 1 }} />
+            </View>
+          </Card>
+        </Reveal>
+      ) : null}
 
       {/* Tip for today, written by AI for this person; the same tip all day */}
       {tip ? (
         <Reveal index={2} style={{ marginTop: 16 }}>
           <View style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: C.borderLight }} accessible accessibilityLabel={`Tip for today. ${tip.text}`}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="sparkles" size={20} color={C.primary} />
-              </View>
-              <T v="overline" color={C.textSecondary} style={{ flex: 1 }}>Tip for today</T>
-              {tip.ai ? <Badge label="Written by AI" tone="info" /> : null}
-            </View>
-            <T v="body" style={{ marginTop: 10, lineHeight: 24 }}>{tip.text}</T>
+            <T v="label" color={C.textSecondary}>Tip for today{tip.ai ? ', written with AI' : ''}</T>
+            <T v="body" style={{ marginTop: 6, lineHeight: 24 }}>{tip.text}</T>
             <T v="caption" color={C.textTertiary} style={{ marginTop: 8 }}>General guidance, not a diagnosis. A new tip arrives every day.</T>
           </View>
         </Reveal>
@@ -447,11 +469,25 @@ export default function Today() {
       ) : null}
 
       <Reveal index={6}>
-        <Section title="Your medicines" action="Open" onAction={() => router.push('/(patient)/medications' as any)}>
-          <Card onPress={() => router.push('/(patient)/medications' as any)}>
-            <ListRow icon="medkit-outline" title={meds && meds.total > 0 ? `${meds.taken} of ${meds.total} doses taken today` : 'Add your medicines'}
-              subtitle={meds && meds.total > 0 ? (meds.doses.find((d: any) => d.status === 'overdue') ? 'A dose is overdue' : meds.doses.find((d: any) => d.status === 'pending') ? `Next: ${meds.doses.find((d: any) => d.status === 'pending').name}` : 'All done for now') : 'Get reminders and track every dose'}
-              right={meds?.doses?.some((d: any) => d.status === 'overdue') ? <Badge label="Overdue" tone="danger" /> : undefined} />
+        <Section title="Today's medicines" action={meds && meds.total > 0 ? `${meds.taken} of ${meds.total} taken` : 'Open'} onAction={() => router.push('/(patient)/medications' as any)}>
+          <Card style={{ paddingVertical: 6 }}>
+            {meds && meds.doses?.length ? meds.doses.slice(0, 4).map((d: any, i: number) => (
+              <PressScale key={`${d.medication_id}-${d.time}`} label={`${d.name}, ${d.time}, ${d.status}`} onPress={() => router.push('/(patient)/medications' as any)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: C.borderLight }}>
+                <Ionicons name={d.status === 'taken' ? 'checkmark-circle' : d.status === 'skipped' ? 'close-circle-outline' : 'ellipse-outline'} size={26}
+                  color={d.status === 'taken' ? C.primary : d.status === 'overdue' ? C.danger : C.textMuted} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <T v="bodyStrong" numberOfLines={1}>{d.name}{d.dose ? `, ${d.dose}` : ''}</T>
+                  <T v="caption" color={C.textSecondary}>{d.time}</T>
+                </View>
+                {d.status === 'overdue' ? <T v="label" color={C.danger}>Overdue</T> : null}
+              </PressScale>
+            )) : (
+              <PressScale label="Add your medicines" onPress={() => router.push('/(patient)/medications' as any)} style={{ paddingVertical: 14 }}>
+                <T v="bodyStrong">Add your medicines</T>
+                <T v="caption" color={C.textSecondary}>Reminders and your doctor's prescriptions appear here.</T>
+              </PressScale>
+            )}
           </Card>
         </Section>
       </Reveal>

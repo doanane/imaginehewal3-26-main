@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { ChevronRight, Droplets, Footprints, Heart, Search, Users } from 'lucide-react';
 import type { Group, Overview } from './types';
 import { Badge, Empty, Skeleton } from './ui';
 import AddPatient from './AddPatient';
+import Rail from './Rail';
 import { ago, bpText, GROUP_LABEL, initials, show } from './util';
 
 const FILTERS: (Group | 'all')[] = ['all', 'critical', 'monitor', 'stable', 'healthy', 'no_data'];
@@ -20,7 +20,8 @@ export default function PatientsPage({ overview, error, unread }: { overview: Ov
   const counts: Record<string, number> = { all: overview.stats.total, ...overview.stats } as unknown as Record<string, number>;
 
   return (
-    <>
+    <div className="rail-layout">
+    <div className="rail-main">
       <header className="page-head"><div><h1>Patients</h1><p>Everyone who chose you as their doctor, or accepted your request. Select a patient for their analysis.</p></div></header>
       <AddPatient />
       <section className="card">
@@ -38,8 +39,8 @@ export default function PatientsPage({ overview, error, unread }: { overview: Ov
           <Empty icon={<Users size={28} />} title="No patients yet">A patient appears here when they pick you in the HEWAL3 app under Profile, My doctor, using your ID <b>{overview.doctor.doctor_id}</b>, or when they accept a request you send above.</Empty>
         ) : rows.length === 0 ? <Empty icon={<Search size={26} />} title="No patient matches" /> : (
           <ul className="prow-list">
-            {rows.map((p, i) => (
-              <motion.li key={p.patient_id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04, duration: 0.35 }}>
+            {rows.map(p => (
+              <li key={p.patient_id}>
                 <a href={`#/patient/${p.patient_id}`} className="prow">
                   <span className={`avatar lg ${p.group}`}>{initials(p.name)}</span>
                   <div className="prow-id">
@@ -54,11 +55,13 @@ export default function PatientsPage({ overview, error, unread }: { overview: Ov
                   <div className="prow-when"><small>{ago(p.vitals.at)}</small></div>
                   <ChevronRight size={18} className="chev" />
                 </a>
-              </motion.li>
+              </li>
             ))}
           </ul>
         )}
       </section>
-    </>
+    </div>
+    <Rail />
+    </div>
   );
 }

@@ -3,12 +3,7 @@ import { ThemeToggle } from './theme';
 import { AlertCircle, Eye, EyeOff, Lock, UserRound } from 'lucide-react';
 import { guestLogin, login, saveSession, Session } from './api';
 import Logo from './Logo';
-
-const POINTS = [
-  { title: 'Live from the patient app', text: 'Readings reach this page within seconds of the phone or watch recording them.' },
-  { title: 'Only your own patients', text: 'A patient appears here only after choosing you as their doctor, and can remove you at any time.' },
-  { title: 'Statistics you can check', text: 'Trends, ranges and adherence are calculated from stored readings, with the method shown.' },
-];
+import shot from './assets/today-preview.png';
 
 export default function Login({ notice, onSignedIn }: { notice: string; onSignedIn: (s: Session) => void }) {
   const [id, setId] = useState('');
@@ -40,10 +35,9 @@ export default function Login({ notice, onSignedIn }: { notice: string; onSigned
         <div className="hero-copy">
           <div className="brand-row"><Logo width={180} /></div>
           <h1>Your patients, measured and in one place.</h1>
-          <dl className="hero-points">
-            {POINTS.map(p => (<div key={p.title}><dt>{p.title}</dt><dd>{p.text}</dd></div>))}
-          </dl>
+          <p className="hero-sub">Readings reach this page within seconds of the phone or watch recording them. You see only the patients who chose you.</p>
         </div>
+        <img className="hero-shot" src={shot} width="1920" height="1000" alt="The HEWAL3 Today page, shown with demo data: the day's schedule, one patient's blood pressure, and a calendar." />
       </section>
 
       <section className="login-form-side">

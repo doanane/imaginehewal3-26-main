@@ -1,38 +1,37 @@
 :root {
-  --c-brand: #1b6b50; --c-brand-d: #14533e; --c-brand-soft: #dcf0e5; --c-accent: #ad0023;
-  --c-ink: #12231c; --c-ink2: #3f5249; --c-mute: #667a70; --c-line: #d6e7dd; --c-bg: #e6f5ed; --c-card: #fbfefc; --c-side: #f0f9f4; --side-ink: #12231c; --side-mute: #4c645a; --side-soft: rgba(27, 107, 80, .11); --side-line: #d3e5db;
-  --c-green: #1b6b50; --c-green-bg: #dcf0e5; --c-amber: #9a5b00; --c-amber-bg: #fcefd2; --c-bad: #b3261e; --c-bad-bg: #fde5e0;
-  --c-blue: #2358b8; --c-blue-bg: #e2ecfb; --c-violet: #5b3fb0; --c-none: #55675e; --c-none-bg: #e7efea;
-  --shadow-1: 0 1px 2px rgba(18, 35, 28, .04), 0 10px 26px -16px rgba(18, 35, 28, .22);
-  --shadow-2: 0 2px 4px rgba(18, 35, 28, .06), 0 22px 40px -20px rgba(18, 35, 28, .3);
-  --page-wash: linear-gradient(165deg, #d3efe0 0%, #e6f5ed 38%, #f3faf6 100%);
-  --r: 16px; --r-sm: 12px; --focus: #2358b8;
+  --c-brand: #b3002a; --c-brand-d: #8f0021; --c-brand-soft: #fbe9ed;
+  --c-ink: #17151d; --c-ink2: #4b4856; --c-mute: #7a7786; --c-line: #e7e5ec; --c-bg: #f3f2f6; --c-card: #ffffff; --c-side: #ffffff; --side-ink: #17151d; --side-mute: #5d5a6a; --side-soft: rgba(23, 21, 29, .07); --side-line: #e7e5ec;
+  --c-green: #12805a; --c-green-bg: #e3f5ed; --c-amber: #a45f00; --c-amber-bg: #fdf0d8; --c-bad: #b3121f; --c-bad-bg: #fde7e9;
+  --c-blue: #1f63d6; --c-blue-bg: #e6eefc; --c-violet: #6a43c4; --c-none: #5b5967; --c-none-bg: #ecebf0;
+  --shadow-1: 0 1px 2px rgba(23, 21, 29, .06);
+  --shadow-2: 0 2px 4px rgba(23, 21, 29, .06), 0 22px 40px -18px rgba(23, 21, 29, .28);
+  --r: 14px; --r-sm: 10px; --focus: #1f63d6; --c-accent: #b3002a; --c-on-brand: #ffffff;
   --f-display: "Source Serif 4", Georgia, serif; --f-body: "IBM Plex Sans", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --c-brand: #6fd6a8; --c-brand-d: #9be5c4; --c-brand-soft: #123226; --c-accent: #ff6b86; --c-ink: #eaf5ef; --c-ink2: #c2d5cb; --c-mute: #91a79c;
-    --c-line: #24402f; --c-bg: #0b1812; --c-card: #11251c; --c-side: #0d1f17; --side-ink: #e6f3ec; --side-mute: #a5bcb0; --side-soft: rgba(111, 214, 168, .12); --side-line: #1f3a2d;
-    --c-green: #6fd6a8; --c-green-bg: #123226; --c-amber: #f0b955; --c-amber-bg: #38280a; --c-bad: #ff8d7f; --c-bad-bg: #3b1613;
-    --c-blue: #86b0ff; --c-blue-bg: #13264a; --c-violet: #b9a2ff; --c-none: #b4c7bc; --c-none-bg: #1b2f25; --focus: #86b0ff;
-    --page-wash: linear-gradient(165deg, #0b1812 0%, #0b1812 100%);
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 26px -16px rgba(0, 0, 0, .6); --shadow-2: 0 2px 4px rgba(0, 0, 0, .5), 0 22px 40px -20px rgba(0, 0, 0, .8);
+    --c-brand: #ff5d7d; --c-brand-d: #ff8aa1; --c-brand-soft: #3a121c; --c-ink: #f3f1f7; --c-ink2: #c8c5d2; --c-mute: #9a97a6;
+    --c-line: #2f2c38; --c-bg: #0f0d14; --c-card: #1a1721; --c-side: #0a0910; --side-ink: #ece9f3; --side-mute: #b0acc0; --side-soft: rgba(255, 255, 255, .09); --side-line: rgba(255, 255, 255, .16);
+    --c-green: #5fd3a0; --c-green-bg: #10301f; --c-amber: #f3b84d; --c-amber-bg: #392908; --c-bad: #ff8d96; --c-bad-bg: #3c1219;
+    --c-blue: #78acff; --c-blue-bg: #14264a; --c-violet: #b79cff; --c-none: #c6c3d0; --c-none-bg: #28252f; --focus: #78acff;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px -8px rgba(0, 0, 0, .6); --shadow-2: 0 2px 4px rgba(0, 0, 0, .5), 0 22px 40px -18px rgba(0, 0, 0, .8);
+    --c-accent: #ff5d7d; --c-on-brand: #1a0007; --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-    --c-brand: #6fd6a8; --c-brand-d: #9be5c4; --c-brand-soft: #123226; --c-accent: #ff6b86; --c-ink: #eaf5ef; --c-ink2: #c2d5cb; --c-mute: #91a79c;
-    --c-line: #24402f; --c-bg: #0b1812; --c-card: #11251c; --c-side: #0d1f17; --side-ink: #e6f3ec; --side-mute: #a5bcb0; --side-soft: rgba(111, 214, 168, .12); --side-line: #1f3a2d;
-    --c-green: #6fd6a8; --c-green-bg: #123226; --c-amber: #f0b955; --c-amber-bg: #38280a; --c-bad: #ff8d7f; --c-bad-bg: #3b1613;
-    --c-blue: #86b0ff; --c-blue-bg: #13264a; --c-violet: #b9a2ff; --c-none: #b4c7bc; --c-none-bg: #1b2f25; --focus: #86b0ff;
-    --page-wash: linear-gradient(165deg, #0b1812 0%, #0b1812 100%);
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 26px -16px rgba(0, 0, 0, .6); --shadow-2: 0 2px 4px rgba(0, 0, 0, .5), 0 22px 40px -20px rgba(0, 0, 0, .8);
+    --c-brand: #ff5d7d; --c-brand-d: #ff8aa1; --c-brand-soft: #3a121c; --c-ink: #f3f1f7; --c-ink2: #c8c5d2; --c-mute: #9a97a6;
+    --c-line: #2f2c38; --c-bg: #0f0d14; --c-card: #1a1721; --c-side: #0a0910; --side-ink: #ece9f3; --side-mute: #b0acc0; --side-soft: rgba(255, 255, 255, .09); --side-line: rgba(255, 255, 255, .16);
+    --c-green: #5fd3a0; --c-green-bg: #10301f; --c-amber: #f3b84d; --c-amber-bg: #392908; --c-bad: #ff8d96; --c-bad-bg: #3c1219;
+    --c-blue: #78acff; --c-blue-bg: #14264a; --c-violet: #b79cff; --c-none: #c6c3d0; --c-none-bg: #28252f; --focus: #78acff;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px -8px rgba(0, 0, 0, .6); --shadow-2: 0 2px 4px rgba(0, 0, 0, .5), 0 22px 40px -18px rgba(0, 0, 0, .8);
+    --c-accent: #ff5d7d; --c-on-brand: #1a0007; --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; font: 15px/1.5 var(--f-body); font-variant-numeric: tabular-nums; color: var(--c-ink); background: var(--page-wash) fixed, var(--c-bg); -webkit-font-smoothing: antialiased; }
+body { margin: 0; font: 15px/1.5 var(--f-body); font-variant-numeric: tabular-nums; color: var(--c-ink); background: var(--c-bg); -webkit-font-smoothing: antialiased; }
 h1, h2, h3, p, ul { margin: 0; } ul { padding: 0; list-style: none; }
 h1, h2 { font-family: var(--f-display); font-weight: 600; } h1 { font-size: 28px; letter-spacing: -.01em; line-height: 1.2; } h2 { font-size: 17px; } h3 { font-size: 13px; color: var(--c-mute); margin: 16px 0 6px; text-transform: none; letter-spacing: 0; }
 a { color: inherit; text-decoration: none; } small { display: block; color: var(--c-mute); font-size: 12.5px; line-height: 1.4; }
