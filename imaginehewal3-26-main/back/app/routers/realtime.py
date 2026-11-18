@@ -52,7 +52,9 @@ def _identity(token: str):
         user = db.query(User).filter(User.id == int(payload["sub"]), User.is_active == True).first()  # noqa: E712
         if not user:
             return None
-        name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "HEWAL3 user"
+        from app.services import names
+        profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+        name = names.person_name(user, profile, "HEWAL3 user")                  # the same name every other screen shows: profile name, then first and last, then username
         return user.id, name, ("caregiver" if user.is_caregiver else "patient")
     finally:
         db.close()

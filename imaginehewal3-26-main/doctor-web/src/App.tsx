@@ -100,7 +100,8 @@ function Shell({ session, route, signOut, onProfile }: { session: Session; route
   }, [session.token]);
   useEffect(() => { if (patient) setUnread(u => { if (!u[patient[1]]) return u; const n = { ...u }; delete n[patient[1]]; return n; }); });
   const unreadTotal = Object.values(unread).reduce((a, b) => a + b, 0);
-  const d = session.doctor;
+  // the saved sign-in can be older than the picture or the profile edits: whatever the server last told us wins
+  const d = data?.doctor ? { ...session.doctor, ...data.doctor, photo_url: data.doctor.photo_url ?? null } : session.doctor;
   const patient = /^#\/patient\/(\d+)/.exec(route);
   const pageKey = patient ? `p${patient[1]}` : route.startsWith('#/messages') ? '#/messages' : route.split('?')[0];
   const alerts = data?.stats.active_alerts ?? 0;

@@ -108,3 +108,27 @@ def test_a_profile_edit_reaches_the_doctor(env):
     assert d["patient"]["name"] == "Efua Sarpong" and d["patient"]["age"] == 53
     assert set(d["patient"]["conditions"]) == {"Hypertension", "Asthma"}
     assert d["profile"]["weight"] == 82 and d["profile"]["height"] == 165
+
+
+def test_a_call_shows_the_name_from_the_profile_not_a_placeholder(env):
+    """A patient whose name is only in the profile (no first or last name on the account) is still called by name."""
+    c = env["client"]
+    from app.database import SessionLocal
+    from app.models.user import User, UserProfile
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == env["pat"]).first()
+        u.first_name, u.last_name = None, None
+        db.query(UserProfile).filter(UserProfile.user_id == env["pat"]).first().full_name = "Efua Sarpong"
+        db.commit()
+    finally:
+        db.close()
+    dtok, ptok, _ = _tokens(env)
+    with c.websocket_connect("/ws") as pws, c.websocket_connect("/ws") as dws:
+        _auth(pws, ptok)
+        ready = _auth(dws, dtok)
+        pws.send_json({"type": "call.invite", "to": ready["user_id"], "call_id": "n1", "media": "audio"})
+        got = dws.receive_json()
+        while got["type"] != "call.invite":
+            got = dws.receive_json()
+        assert got["from_name"] == "Efua Sarpong"
