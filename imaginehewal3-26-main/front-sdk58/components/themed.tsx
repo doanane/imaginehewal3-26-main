@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import * as RNSvg from 'react-native-svg';
+import { theme } from '../constants/theme';
 import { mapStyleObject, Mapper } from '../constants/themeEngine';
 import { translateChildren, translateText } from '../i18n/translate';
 import { useHomeAccessibility } from './homeAccessibilityContext';
@@ -316,8 +317,10 @@ Object.assign(Ionicons as any, { glyphMap: (RNIonicons as any).glyphMap });
 Object.assign(MaterialCommunityIcons as any, { glyphMap: (RNMCI as any).glyphMap });
 Object.assign(MaterialIcons as any, { glyphMap: (RNMI as any).glyphMap });
 
-const SwitchBase: any = forwardRef<any, any>((props, ref) => {
+const SwitchBase: any = forwardRef<any, any>((rawProps, ref) => {
   const a = useHomeAccessibility();
+  // every switch in the app uses the app's own colours: teal when on, a quiet grey when off, a white knob (never the system blue)
+  const props = { ...rawProps, trackColor: { false: rawProps.trackColor?.false ?? theme.COLORS.border, true: theme.COLORS.primary }, thumbColor: rawProps.thumbColor ?? '#FFFFFF', ios_backgroundColor: rawProps.ios_backgroundColor ?? theme.COLORS.border };
   if (!a.mapper) return <RNSwitch {...props} ref={ref} />;
   const next = { ...props };
   if (next.thumbColor) next.thumbColor = mapColor(next.thumbColor, a.mapper, 'bg');

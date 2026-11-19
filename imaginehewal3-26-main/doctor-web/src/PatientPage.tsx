@@ -22,7 +22,7 @@ const TABS: { v: Tab; label: string; icon: React.ElementType }[] = [
 const LEVEL: Record<Finding['level'], { icon: React.ElementType; label: string }> = {
   critical: { icon: OctagonAlert, label: 'Critical' }, high: { icon: AlertTriangle, label: 'High' }, moderate: { icon: AlertCircle, label: 'Moderate' }, info: { icon: Info, label: 'Note' },
 };
-const COLORS: Record<string, string> = { heart_rate: 'var(--c-brand)', systolic: 'var(--c-amber)', diastolic: 'var(--c-green)', blood_oxygen: 'var(--c-blue)', glucose: 'var(--c-violet)' };
+const COLORS: Record<string, string> = { heart_rate: 'var(--c-brand)', systolic: 'var(--c-blue)', diastolic: 'var(--c-green)', blood_oxygen: 'var(--c-violet)', glucose: 'var(--c-none)' };
 const BP_ORDER = [['normal', 'Normal'], ['elevated', 'Elevated'], ['stage1', 'Stage 1'], ['stage2', 'Stage 2'], ['crisis', 'Crisis']] as const;
 
 export default function PatientPage({ id, overview }: { id: number; overview: Overview | null }) {

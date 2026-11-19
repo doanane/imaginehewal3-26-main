@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { AppState } from 'react-native';
 import { refreshMedicineReminders } from '../services/medicationReminders';
-import { configurePush, onNotificationTap, pushModulePresent, registerForPush, routeFor } from '../services/pushNotifications';
+import { configurePush, onNotificationTap, pushModulePresent, pushSwitchedOff, registerForPush, routeFor } from '../services/pushNotifications';
 
 /** Mounted once at the root. Registers the phone for push after sign-in and opens the right screen when a notification is tapped. */
 export default function PushHost() {
@@ -14,7 +14,7 @@ export default function PushHost() {
   useEffect(() => { configurePush(); }, []);
   useEffect(() => {
     if (!isAuthenticated || !pushModulePresent()) return;
-    registerForPush();
+    pushSwitchedOff().then((off) => { if (!off) registerForPush(); });
     return onNotificationTap((data) => { const to = routeFor(data, caregiver); if (to) router.push(to as any); });
   }, [isAuthenticated, caregiver, router]);
 

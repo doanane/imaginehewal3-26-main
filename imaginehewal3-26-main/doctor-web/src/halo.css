@@ -310,3 +310,7 @@ body { background-color: var(--c-bg); }
 details.tech { border-top: 1px solid var(--c-line); padding-top: 8px; }
 details.tech summary { cursor: pointer; font-weight: 600; color: var(--c-ink2); }
 details.tech small { margin-top: 6px; }
+
+/* one accent for every count badge: the HEWAL3 red, not blue */
+.count.msg { background: var(--c-accent); color: var(--c-on-brand); }
+.count { color: var(--c-on-brand); }

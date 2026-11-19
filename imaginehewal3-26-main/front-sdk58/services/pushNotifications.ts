@@ -20,6 +20,15 @@ const lib = () => {
 };
 
 const KEY = 'hewal3.push.token';
+const OFF_KEY = 'hewal3.push.off';
+
+/** True when the person switched push notifications off in Settings: the app then never registers this phone again until they switch it back on. */
+export async function pushSwitchedOff(): Promise<boolean> {
+  try { return (await AsyncStorage.getItem(OFF_KEY)) === '1'; } catch { return false; }
+}
+export async function setPushSwitchedOff(off: boolean): Promise<void> {
+  try { if (off) await AsyncStorage.setItem(OFF_KEY, '1'); else await AsyncStorage.removeItem(OFF_KEY); } catch { /* lasts until the app closes */ }
+}
 
 /** Show alerts while the app is open too: the server only pushes when the live connection is not, so this never duplicates. */
 export function configurePush() {
