@@ -95,6 +95,7 @@ def _heat_index_c(temp_c: float, rh: float) -> float:
     return round((hi - 32) * 5 / 9, 1)
 
 
+HI_CAP_C = 55.0
 LEVELS = ["low", "caution", "extreme_caution", "danger", "extreme_danger"]
 ADVICE = {
     "low": {"title": "Low heat risk", "water": "Drink when thirsty.", "rest": "Normal breaks.", "do": ["Stay hydrated through the day."]},
@@ -112,8 +113,10 @@ ADVICE = {
 def heat_check(*, temp_c: float, humidity_pct: float, effort: str = "light", direct_sun: bool = False, conditions: Optional[List[str]] = None,
                region: Optional[str] = None) -> dict:
     """Heat index from the entered temperature and humidity, raised one step for heavy effort, direct sun or a condition that makes heat harder."""
-    hi = _heat_index_c(temp_c, humidity_pct)
-    f = hi * 9 / 5 + 32
+    raw = _heat_index_c(temp_c, humidity_pct)
+    capped = raw > HI_CAP_C
+    hi = min(raw, HI_CAP_C)                                        # the formula is only meant for ordinary weather: never show an absurd figure
+    f = raw * 9 / 5 + 32                                           # the level still uses the raw value
     idx = 0 if f < 80 else 1 if f < 91 else 2 if f < 104 else 3 if f < 125 else 4
     raised: List[str] = []
     if effort == "heavy" and idx < 4:
@@ -126,6 +129,6 @@ def heat_check(*, temp_c: float, humidity_pct: float, effort: str = "light", dir
     level = LEVELS[idx]
     a = ADVICE[level]
     extra = ["If you take medicines for blood pressure, heart or kidneys, ask a clinician how heat affects them."] if any(c in conds for c in HIGH_RISK_CONDITIONS) else []
-    return {"heat_index_c": hi, "temp_c": temp_c, "humidity_pct": humidity_pct, "level": level, "title": a["title"], "water": a["water"], "rest": a["rest"],
+    return {"heat_index_c": hi, "heat_index_capped": capped, "temp_c": temp_c, "humidity_pct": humidity_pct, "level": level, "title": a["title"], "water": a["water"], "rest": a["rest"],
             "do": a["do"] + extra, "raised_because": raised, "emergency_number": "998" if (region or "").lower() == "ae" else "112",
             "note": "General guidance from the heat index and usual work-rest bands. It does not replace your employer's safety plan or a clinician."}

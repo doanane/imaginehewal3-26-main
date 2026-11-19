@@ -272,3 +272,41 @@ h3 { font-size: 14px; margin: 14px 0 6px; }
 .bigcode { font-size: 26px; letter-spacing: 4px; font-weight: 700; }
 .keycode { word-break: break-all; font-size: 13px; }
 @media (max-width: 700px) { .wp-form { grid-template-columns: 1fr 1fr; } .wp-note { grid-column: 1 / -1; } }
+
+/* ---------- Glass, depth and motion ----------
+   Light mode used to be white cards on a near-white page, so everything blended into one bright sheet. The page is now a soft cool grey, the cards are
+   frosted glass with a lit top edge and a real shadow, so each panel stands off the page. Dark mode keeps its own tokens. */
+:root { --c-bg: #dcdae6; --c-line: #cbc8d8; --glass: rgba(255, 255, 255, .66); --glass-rim: rgba(255, 255, 255, .85); --glass-low: rgba(23, 21, 29, .08); --glow-a: rgba(179, 0, 42, .16); --glow-b: rgba(31, 99, 214, .14); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --glass: rgba(30, 26, 40, .58); --glass-rim: rgba(255, 255, 255, .16); --glass-low: rgba(0, 0, 0, .5); --glow-a: rgba(255, 93, 125, .20); --glow-b: rgba(120, 172, 255, .16); } }
+:root[data-theme="dark"] { --glass: rgba(30, 26, 40, .58); --glass-rim: rgba(255, 255, 255, .16); --glass-low: rgba(0, 0, 0, .5); --glow-a: rgba(255, 93, 125, .20); --glow-b: rgba(120, 172, 255, .16); }
+
+/* something soft behind the glass, so the glass has something to blur */
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(520px 420px at 82% 8%, var(--glow-a), transparent 70%), radial-gradient(620px 520px at 12% 92%, var(--glow-b), transparent 70%); }
+body { background-color: var(--c-bg); }
+
+.card, .kpi, .rail-card { background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid color-mix(in srgb, var(--c-line) 70%, transparent); border-top-color: var(--glass-rim); border-left-color: var(--glass-rim);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 1px 2px var(--glass-low), 0 18px 34px -20px var(--glass-low); }
+.side { background: color-mix(in srgb, var(--c-side) 80%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4); }
+.field { background: color-mix(in srgb, var(--c-card) 55%, var(--c-bg)); }
+.callout { background: color-mix(in srgb, var(--c-card) 70%, var(--c-bg)); }
+@supports not (backdrop-filter: blur(1px)) { .card, .kpi, .rail-card { background: var(--c-card); } }
+
+/* depth: panels lean toward you a little on hover and settle when pressed; buttons press in. No movement for people who asked for less. */
+.card, .kpi, .btn { transition: transform .28s cubic-bezier(.2, .7, .2, 1), box-shadow .28s ease; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card:not(:has(form, details[open], input, textarea)):hover, .kpi:hover { transform: perspective(1100px) translateY(-4px) rotateX(1.6deg); box-shadow: inset 0 1px 0 var(--glass-rim), 0 2px 4px var(--glass-low), 0 30px 44px -22px var(--glass-low); }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px) scale(.98); }
+}
+@media (prefers-reduced-motion: reduce) { .card, .kpi, .btn { transition: none; } }
+
+/* Workplaces: plain steps and the technical part folded away */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; margin: 14px 0 18px; padding: 0; list-style: none; counter-reset: s; }
+.steps li { position: relative; padding: 12px 14px 12px 46px; border: 1px solid var(--c-line); border-radius: var(--r-sm); background: var(--glass); counter-increment: s; }
+.steps li::before { content: counter(s); position: absolute; left: 12px; top: 12px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--c-brand); color: var(--c-on-brand); font-weight: 700; font-size: 13px; }
+.steps b { display: block; }
+details.tech { border-top: 1px solid var(--c-line); padding-top: 8px; }
+details.tech summary { cursor: pointer; font-weight: 600; color: var(--c-ink2); }
+details.tech small { margin-top: 6px; }

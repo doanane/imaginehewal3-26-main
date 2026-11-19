@@ -77,7 +77,7 @@ def screenings(db: Session = Depends(get_db), user: User = Depends(get_current_a
 
 # ------------------------------------------------------------------ workplace heat
 class HeatIn(BaseModel):
-    temp_c: float = Field(..., ge=-20, le=60)
+    temp_c: float = Field(..., ge=-20, le=50)
     humidity_pct: float = Field(..., ge=0, le=100)
     effort: str = "light"
     direct_sun: bool = False

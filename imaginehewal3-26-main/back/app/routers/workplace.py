@@ -120,7 +120,7 @@ class WorkplaceIn(BaseModel):
 
 
 class ReadingIn(BaseModel):
-    temp_c: float = Field(..., ge=-20, le=60)
+    temp_c: float = Field(..., ge=-20, le=50, description="Air temperature in degrees Celsius. Above 50 is not a real workplace reading.")
     humidity_pct: float = Field(..., ge=0, le=100)
     note: Optional[str] = Field(None, max_length=200)
 

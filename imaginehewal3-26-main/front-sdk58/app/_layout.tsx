@@ -1,3 +1,4 @@
+import { KeyboardInset } from '../components/KeyboardInset';
 import { Stack } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
@@ -65,6 +66,7 @@ export default function RootLayout() {
                     <AccessibilityLayer>
                       <View style={styles.webWrapper}>
                         <View style={styles.webContainer}>
+                          <KeyboardInset>
                           <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
                             <GuestBanner />
                             <StatusBar barStyle="dark-content" />
@@ -73,6 +75,7 @@ export default function RootLayout() {
                             <CallHost />
                             <PushHost />
                           </SafeAreaView>
+                          </KeyboardInset>
                         </View>
                       </View>
                     </AccessibilityLayer>

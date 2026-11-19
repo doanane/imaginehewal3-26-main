@@ -10,7 +10,7 @@ import { LinearGradient as RNLinearGradient } from 'expo-linear-gradient';
 import React, { forwardRef, useCallback, useEffect, useRef } from 'react';
 import {
   ActivityIndicator as RNActivityIndicator, FlatList as RNFlatList, Image as RNImage, ImageBackground as RNImageBackground,
-  KeyboardAvoidingView as RNKeyboardAvoidingView, Pressable as RNPressable, RefreshControl as RNRefreshControl,
+  Keyboard, KeyboardAvoidingView as RNKeyboardAvoidingView, Platform, Pressable as RNPressable, RefreshControl as RNRefreshControl,
   ScrollView as RNScrollView, StatusBar as RNStatusBar, StyleSheet, Switch as RNSwitch, Text as RNText,
   TextInput as RNTextInput, TouchableOpacity as RNTouchableOpacity, View as RNView,
 } from 'react-native';
@@ -89,22 +89,49 @@ export const View = themedContainer(RNView) as unknown as typeof RNView;
 export const SafeAreaView = themedContainer(RNSafeAreaView) as unknown as typeof RNSafeAreaView;
 export const KeyboardAvoidingView = themedContainer(RNKeyboardAvoidingView) as unknown as typeof RNKeyboardAvoidingView;
 
-function themedScroll<T>(Base: any) {
+function themedScroll<T>(Base: any, scrollsToInput = false) {
   const W = forwardRef<any, any>((props, ref) => {
     const a = useHomeAccessibility();
     const next: any = { ...props };
+    // Android: when the keyboard opens, scroll so the box being typed in stays in view, above the keyboard (the app is padded for the keyboard in KeyboardInset)
+    const inner = useRef<any>(null);
+    const offset = useRef(0);
+    useEffect(() => {
+      if (!scrollsToInput || Platform.OS !== 'android') return;
+      const sub = Keyboard.addListener('keyboardDidShow', (e) => {
+        const input = (RNTextInput as any).State?.currentlyFocusedInput?.();
+        if (!input?.measureInWindow || !inner.current?.measureInWindow) return;
+        setTimeout(() => {
+          input.measureInWindow((_ix: number, iy: number, _iw: number, ih: number) => {
+            inner.current?.measureInWindow?.((_sx: number, sy: number, _sw: number, sh: number) => {
+              const bottom = Math.min(sy + sh, e.endCoordinates.screenY) - 16;
+              const top = sy + 8;
+              if (iy + ih > bottom) inner.current?.scrollTo?.({ y: offset.current + (iy + ih - bottom), animated: true });
+              else if (iy < top) inner.current?.scrollTo?.({ y: Math.max(0, offset.current - (top - iy)), animated: true });
+            });
+          });
+        }, 200);                                                   // let the layout settle above the keyboard first
+      });
+      return () => sub.remove();
+    }, []);
+    if (scrollsToInput && Platform.OS === 'android') {
+      const userScroll = props.onScroll;
+      next.onScroll = (ev: any) => { offset.current = ev.nativeEvent.contentOffset.y; userScroll?.(ev); };
+      next.scrollEventThrottle = props.scrollEventThrottle ?? 16;
+    }
+    const setRef = (node: any) => { inner.current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; };
     if (a.mapper) {
       if ('style' in next) next.style = mapStyle(next.style, a.mapper);
       if ('contentContainerStyle' in next) next.contentContainerStyle = mapStyle(next.contentContainerStyle, a.mapper);
       if ('columnWrapperStyle' in next) next.columnWrapperStyle = mapStyle(next.columnWrapperStyle, a.mapper);
     }
     if (a.dark && next.indicatorStyle === undefined) next.indicatorStyle = 'white';
-    return <Base {...next} ref={ref} />;
+    return <Base {...next} ref={setRef} />;
   });
   W.displayName = `Themed(${Base.displayName || Base.name || 'Scroll'})`;
   return W as unknown as T;
 }
-export const ScrollView = themedScroll<typeof RNScrollView>(RNScrollView);
+export const ScrollView = themedScroll<typeof RNScrollView>(RNScrollView, true);
 export const FlatList = themedScroll<typeof RNFlatList>(RNFlatList);
 
 // ------------------------------------------------------------------ touchables
