@@ -1,3 +1,12 @@
+const { withGradleProperties } = require('expo/config-plugins');
+
+/** Android only: do not shrink the release build with R8. react-native-webrtc references classes R8 cannot find, which made the build fail. The app is a little bigger; nothing else changes, and iOS is not affected. */
+const noAndroidMinify = (c) => withGradleProperties(c, (cfg) => {
+  cfg.modResults = cfg.modResults.filter((i) => !(i.type === 'property' && i.key === 'android.enableMinifyInReleaseBuilds'));
+  cfg.modResults.push({ type: 'property', key: 'android.enableMinifyInReleaseBuilds', value: 'false' });
+  return cfg;
+});
+
 module.exports = ({ config }) => {
   
   try {
@@ -71,7 +80,8 @@ module.exports = ({ config }) => {
         "expo-secure-store",
         "expo-sharing",
         "expo-status-bar",
-        "expo-web-browser"
+        "expo-web-browser",
+        noAndroidMinify
       ],
       experiments: {
         typedRoutes: true,
