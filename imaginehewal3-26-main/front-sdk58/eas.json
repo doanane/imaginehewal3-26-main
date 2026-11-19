@@ -9,6 +9,11 @@
       "ios": {
         "simulator": false
       }
+    },
+    "preview-android": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_BASE_URL": "https://imaginehewal3-26-main.onrender.com" }
     }
   }
 }

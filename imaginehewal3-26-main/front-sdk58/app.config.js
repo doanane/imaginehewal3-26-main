@@ -26,6 +26,7 @@ module.exports = ({ config }) => {
         }
       },
       android: {
+        package: "com.oggskimmer.hewal3",
         adaptiveIcon: {
           backgroundColor: "#E6F4FE",
           foregroundImage: "./assets/images/icon.png",
