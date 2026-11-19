@@ -37,7 +37,7 @@ export default function Login({ notice, onSignedIn }: { notice: string; onSigned
           <h1>Your patients, measured and in one place.</h1>
           <p className="hero-sub">Readings reach this page within seconds of the phone or watch recording them. You see only the patients who chose you.</p>
         </div>
-        <img className="hero-shot" src={shot} width="1920" height="1000" alt="The HEWAL3 Today page, shown with demo data: the day's schedule, one patient's blood pressure, and a calendar." />
+        <div className="hero-shot-wrap"><img className="hero-shot" src={shot} width="1920" height="1000" alt="The HEWAL3 Today page with sample data: the day's schedule, one patient's blood pressure, and a calendar." /></div>
       </section>
 
       <section className="login-form-side">

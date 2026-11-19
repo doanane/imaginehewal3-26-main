@@ -180,11 +180,13 @@ h3 { font-size: 14px; margin: 14px 0 6px; }
 
 /* sign in: the product itself is the picture */
 .login { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
-.login-hero { position: relative; overflow: hidden; align-items: flex-start; }
-.login-hero .hero-copy { position: relative; z-index: 1; padding: clamp(28px, 4vw, 56px); max-width: 640px; }
+.login-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; min-height: 100vh; }
+.login-hero .hero-copy { position: relative; z-index: 1; padding: clamp(28px, 4vw, 56px) clamp(28px, 4vw, 56px) 0; max-width: 640px; flex: none; }
 .login-hero h1 { margin: 28px 0 14px; font-size: clamp(32px, 3.6vw, 48px); }
 .hero-sub { color: #c9c5d3; font-size: 17px; max-width: 46ch; margin: 0; }
-.hero-shot { position: absolute; left: clamp(28px, 4vw, 56px); top: 56%; width: 150%; max-width: none; height: auto; border-radius: 14px 0 0 0; border: 1px solid rgba(255, 255, 255, .14); box-shadow: none; }
+/* the picture sits below the words in the same column and is cropped by its own box, so it can never run under the text */
+.hero-shot-wrap { flex: 1 1 auto; min-height: 180px; margin: 32px 0 0 clamp(28px, 4vw, 56px); overflow: hidden; border-radius: 14px 0 0 0; border: 1px solid rgba(255, 255, 255, .14); border-right: 0; border-bottom: 0; }
+.hero-shot { display: block; width: 150%; max-width: none; height: auto; }
 @media (max-width: 900px) { .login { grid-template-columns: 1fr; } .login-hero { min-height: 0; } .hero-shot { display: none; } }
 
 /* calendar days: a button with a round, fixed-size mark that fits the number */
@@ -245,3 +247,28 @@ h3 { font-size: 14px; margin: 14px 0 6px; }
 /* a reading that is not current is shown, but muted */
 .prow-v.stale b { color: var(--c-mute); font-weight: 500; }
 .prow-v.stale svg { opacity: .5; }
+
+/* Health record tab: result flags and the open-visit panel */
+.flag { display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--c-line); color: var(--c-ink2); background: var(--c-none-bg); }
+.flag.normal { color: var(--c-green); background: var(--c-green-bg); border-color: transparent; }
+.flag.low { color: var(--c-blue); background: var(--c-blue-bg); border-color: transparent; }
+.flag.high { color: var(--c-amber); background: var(--c-amber-bg); border-color: transparent; }
+.flag.critical { color: var(--c-bad); background: var(--c-bad-bg); border-color: transparent; }
+.callout { display: grid; gap: 6px; padding: 14px 16px; margin: 4px 0 14px; border: 1px solid var(--c-line); border-left: 4px solid var(--c-brand); border-radius: var(--r-sm); background: var(--c-bg); color: var(--c-ink); }
+.callout small { color: var(--c-ink2); }
+.callout code { display: block; padding: 8px 10px; border-radius: 8px; background: var(--c-card); border: 1px solid var(--c-line); user-select: all; }
+.field select, .field textarea { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; padding: 10px 0; font: inherit; color: inherit; }
+.field textarea { resize: vertical; min-height: 64px; }
+.field:has(textarea) { align-items: stretch; padding-top: 2px; padding-bottom: 2px; }
+.field select option { color: #17151d; background: #fff; }
+
+/* Workplaces page */
+.wp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.wp-now { margin: 4px 0; font-size: 17px; }
+.wp-now b { font-size: 28px; font-family: var(--f-display); font-weight: 600; margin-right: 6px; }
+.wp-now small { display: block; color: var(--c-ink2); }
+.wp-form { display: grid; grid-template-columns: 84px 84px minmax(0, 1fr) auto; gap: 8px; align-items: center; margin: 10px 0; }
+.wp-actions { display: inline-flex; gap: 6px; align-items: center; }
+.bigcode { font-size: 26px; letter-spacing: 4px; font-weight: 700; }
+.keycode { word-break: break-all; font-size: 13px; }
+@media (max-width: 700px) { .wp-form { grid-template-columns: 1fr 1fr; } .wp-note { grid-column: 1 / -1; } }

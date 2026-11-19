@@ -141,6 +141,9 @@ export default function Me() {
       <Section title="Health and care">
         <Card>
           <ListRow icon="person-outline" title="Personal and medical details" subtitle="Conditions, medicines and body measurements" onPress={() => router.push('/(patient)/profile-setup' as any)} />
+          <ListRow icon="document-text-outline" title="Health record" subtitle="Allergies, results, imaging, vaccines, insurance, visits" onPress={() => router.push('/(patient)/health-record' as any)} />
+          <ListRow icon="people-circle-outline" title="Family profiles" subtitle="Children and parents you look after" onPress={() => router.push('/(patient)/dependents' as any)} />
+          <ListRow icon="shield-checkmark-outline" title="Prevention" subtitle="Checks for your age, diabetes risk, heat safety at work" onPress={() => router.push('/(patient)/prevention' as any)} />
           <ListRow icon="heart-outline" title="Health overview" subtitle="Vitals, trends and recent readings" onPress={() => router.push('/(patient)/health' as any)} />
           <ListRow icon="chatbubbles-outline" title="Messages with care team" subtitle="Chat with your caregivers and doctors" onPress={() => router.push('/(patient)/messages' as any)} />
           {demo ? <ListRow icon="flask-outline" title="Demo tools" subtitle="Simulate a blood pressure spike to show the emergency flow" onPress={() => router.push('/(patient)/demo' as any)} /> : null}

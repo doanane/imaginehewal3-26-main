@@ -69,6 +69,22 @@ export const getPrescriptions = (id: number) => call<{ prescriptions: Rx[] }>(`/
 export const prescribe = (id: number, b: { name: string; dose?: string; times: string[]; instructions?: string }) => call<Rx>(`/patients/${id}/prescriptions`, { method: 'POST', body: b });
 export const stopPrescription = (rxId: number, reason: string) => call<Rx>(`/prescriptions/${rxId}/stop`, { method: 'POST', body: { reason } });
 
+// ------------------------------------------------------------------ health record: labs, radiology, allergies, immunisations, visits
+export interface RecAllergy { id: number; substance: string; reaction: string | null; severity: 'mild' | 'moderate' | 'severe'; source: 'patient' | 'doctor'; at: string | null }
+export interface RecLab { id: number; test: string; value: string; unit: string | null; ref_range: string | null; flag: 'normal' | 'low' | 'high' | 'critical'; taken_at: string | null; note: string | null }
+export interface RecRad { id: number; modality: string; body_part: string; facility: string | null; performed_at: string | null; findings: string | null; impression: string | null; image_url: string | null }
+export interface RecImm { id: number; vaccine: string; dose: string | null; given_on: string | null; facility: string | null; source: 'patient' | 'doctor' }
+export interface RecVisit { id: number; facility: string | null; kind: 'clinic' | 'emergency' | 'admission'; reason: string | null; doctor: string | null; checked_in_at: string | null; checked_out_at: string | null; open: boolean; summary: string | null }
+export interface RecIns { provider: string; plan: string | null; member_no: string | null; valid_until: string | null; expired: boolean; coverage_notes: string | null }
+export interface HealthRecord { allergies: RecAllergy[]; labs: RecLab[]; radiology: RecRad[]; immunisations: RecImm[]; insurance: RecIns | null; visits: RecVisit[]; open_visit: RecVisit | null }
+export const getRecord = (id: number) => call<HealthRecord>(`/patients/${id}/records`);
+export const addLab = (id: number, b: { test: string; value: string; unit?: string; ref_range?: string; flag: string; note?: string }) => call<RecLab>(`/patients/${id}/labs`, { method: 'POST', body: b });
+export const addRadiology = (id: number, b: { modality: string; body_part: string; findings?: string; impression?: string; image_url?: string }) => call<RecRad>(`/patients/${id}/radiology`, { method: 'POST', body: b });
+export const addAllergy = (id: number, b: { substance: string; reaction?: string; severity: string }) => call<RecAllergy>(`/patients/${id}/allergies`, { method: 'POST', body: b });
+export const addImmunisation = (id: number, b: { vaccine: string; dose?: string; given_on: string }) => call<RecImm>(`/patients/${id}/immunisations`, { method: 'POST', body: b });
+export const checkIn = (id: number, b: { kind: string; reason?: string }) => call<RecVisit>(`/patients/${id}/visits`, { method: 'POST', body: b });
+export const checkOut = (id: number, visit: number, summary: string) => call<RecVisit>(`/patients/${id}/visits/${visit}/check-out`, { method: 'POST', body: { summary } });
+
 export const getIce = () => call<{ iceServers: RTCIceServer[]; relay: boolean }>('/rtc/ice');
 
 export const getPatientBehavior = (id: number) => call<any>(`/patients/${id}/behavior`);
@@ -146,3 +162,15 @@ export const findPatient = (q: string) => call<any>(`/find?q=${encodeURIComponen
 export const sendLinkRequest = (patient_user_id: number, message: string) => call<{ id: number; status: string }>('/link-requests', { method: 'POST', body: { patient_user_id, message: message || null } });
 export const getLinkRequests = () => call<{ requests: any[] }>('/link-requests');
 export const withdrawLinkRequest = (id: number) => call<{ ok: boolean }>(`/link-requests/${id}`, { method: 'DELETE' });
+export const redeemShare = (code: string) => call<unknown>('/exchange/redeem', { method: 'POST', body: { code } });
+
+// ------------------------------------------------------------------ workplace heat safety
+export interface Workplace { id: number; name: string; region: string; latest: { temp_c: number; humidity_pct: number; source: string; note: string | null; at: string | null } | null; level: string | null; title: string | null; heat_index_c: number | null; members: number | null; members_hidden: boolean; has_sensor_key: boolean; last_alert_at: string | null; last_alert_level: string | null }
+export interface WorkplaceReading { id: number; temp_c: number; humidity_pct: number; source: string; note: string | null; at: string | null; level: string; heat_index_c: number }
+export const getWorkplaces = () => call<{ workplaces: Workplace[] }>('/workplaces');
+export const createWorkplace = (name: string, region: string) => call<Workplace & { join_code: string; site_key: string; note: string }>('/workplaces', { method: 'POST', body: { name, region } });
+export const addSiteReading = (id: number, b: { temp_c: number; humidity_pct: number; note?: string }) => call<Workplace>(`/workplaces/${id}/readings`, { method: 'POST', body: b });
+export const getSiteReadings = (id: number, hours = 48) => call<{ readings: WorkplaceReading[] }>(`/workplaces/${id}/readings?hours=${hours}`);
+export const rotateWorkplace = (id: number) => call<{ join_code: string; site_key: string; note: string }>(`/workplaces/${id}/rotate`, { method: 'POST' });
+export const deleteWorkplace = (id: number) => call<{ ok: boolean }>(`/workplaces/${id}`, { method: 'DELETE' });
+

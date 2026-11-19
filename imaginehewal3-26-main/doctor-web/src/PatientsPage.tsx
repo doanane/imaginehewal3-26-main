@@ -3,6 +3,7 @@ import { ChevronRight, Droplets, Footprints, Heart, Search, Users } from 'lucide
 import type { Group, Overview } from './types';
 import { Badge, Empty, Skeleton } from './ui';
 import AddPatient from './AddPatient';
+import SharedRecord from './SharedRecord';
 import Rail from './Rail';
 import { ago, bpText, GROUP_LABEL, initials, show, shownId } from './util';
 
@@ -24,6 +25,7 @@ export default function PatientsPage({ overview, error, unread }: { overview: Ov
     <div className="rail-main">
       <header className="page-head"><div><h1>Patients</h1><p>Everyone who chose you as their doctor, or accepted your request. Select a patient for their analysis.</p></div></header>
       <AddPatient />
+      <SharedRecord />
       <section className="card">
         <div className="toolbar">
           <label className="search"><Search size={18} /><input type="search" placeholder="Search by name or patient ID" aria-label="Search patients" value={q} onChange={e => setQ(e.target.value)} /></label>

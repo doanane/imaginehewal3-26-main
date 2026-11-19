@@ -947,6 +947,47 @@ export type DoctorThread = { messages: DoctorChatMessage[]; doctor: NonNullable<
 export type DoctorAppt = { id: number; doctor: string | null; starts_at: string; duration_min: number; mode: 'in_person' | 'video' | 'phone'; reason: string | null; status: 'requested' | 'confirmed' | 'declined' | 'cancelled' | 'completed'; doctor_message: string | null };
 export type DoctorRx = { id: number; name: string; dose: string | null; times: string[]; instructions: string | null; status: 'active' | 'stopped'; stop_reason: string | null; prescribed: string | null; stopped: string | null; doctor: string | null };
 export type DoctorNoteItem = { id: number; text: string; at: string | null };
+// ------------------------------------------------------------------ health record, dependents, prevention, sharing
+export interface RecAllergy { id: number; substance: string; reaction: string | null; severity: 'mild' | 'moderate' | 'severe'; source: 'patient' | 'doctor' }
+export interface RecLab { id: number; test: string; value: string; unit: string | null; ref_range: string | null; flag: 'normal' | 'low' | 'high' | 'critical'; taken_at: string | null }
+export interface RecRad { id: number; modality: string; body_part: string; facility: string | null; performed_at: string | null; findings: string | null; impression: string | null; image_url: string | null }
+export interface RecImm { id: number; vaccine: string; dose: string | null; given_on: string | null; facility: string | null; source: 'patient' | 'doctor' }
+export interface RecVisit { id: number; facility: string | null; kind: string; reason: string | null; doctor: string | null; checked_in_at: string | null; checked_out_at: string | null; open: boolean; summary: string | null }
+export interface RecIns { provider: string; plan: string | null; member_no: string | null; valid_until: string | null; expired: boolean; coverage_notes: string | null }
+export interface RecDependent { id: number; name: string; relationship: string; birth_date: string | null; sex: string | null; allergies: string | null; conditions: string | null; notes: string | null }
+export interface HealthRecord { allergies: RecAllergy[]; labs: RecLab[]; radiology: RecRad[]; immunisations: RecImm[]; insurance: RecIns | null; visits: RecVisit[]; open_visit: RecVisit | null; dependents: RecDependent[] }
+export interface RecShare { id: number; label: string | null; expires_at: string | null; uses: number; max_uses: number; active: boolean; revoked: boolean; accessed_by: { doctor: string; at: string | null }[]; code?: string; note?: string }
+export const getRecords = () => apiCall<HealthRecord>('/records');
+export const addAllergy = (b: { substance: string; reaction?: string; severity: string }) => apiCall<RecAllergy>('/records/allergies', { method: 'POST', body: JSON.stringify(b) });
+export const deleteAllergy = (id: number) => apiCall('/records/allergies/' + id, { method: 'DELETE' });
+export const addImmunisation = (b: { vaccine: string; dose?: string; given_on: string }) => apiCall<RecImm>('/records/immunisations', { method: 'POST', body: JSON.stringify(b) });
+export const deleteImmunisation = (id: number) => apiCall('/records/immunisations/' + id, { method: 'DELETE' });
+export const saveInsurance = (b: { provider: string; plan?: string; member_no?: string; valid_until?: string; coverage_notes?: string }) => apiCall<RecIns>('/records/insurance', { method: 'PUT', body: JSON.stringify(b) });
+export const deleteInsurance = () => apiCall('/records/insurance', { method: 'DELETE' });
+export const getDependents = () => apiCall<{ dependents: RecDependent[] }>('/records/dependents');
+export const saveDependent = (b: Partial<RecDependent> & { name: string; relationship: string }, id?: number) => apiCall<RecDependent>(id ? '/records/dependents/' + id : '/records/dependents', { method: id ? 'PUT' : 'POST', body: JSON.stringify(b) });
+export const deleteDependent = (id: number) => apiCall('/records/dependents/' + id, { method: 'DELETE' });
+export const createShare = (label: string, hours: number) => apiCall<RecShare>('/records/share', { method: 'POST', body: JSON.stringify({ label: label || undefined, hours }) });
+export const getShares = () => apiCall<{ shares: RecShare[] }>('/records/share');
+export const revokeShare = (id: number) => apiCall('/records/share/' + id, { method: 'DELETE' });
+export interface DiabetesResult { score: number; max: number; band: string; next_step: string; parts: { label: string; points: number; why: string }[]; note: string }
+export interface Screening { name: string; every: string; why: string }
+export interface HeatResult { heat_index_c: number; level: string; title: string; water: string; rest: string; do: string[]; raised_because: string[]; emergency_number: string; note: string }
+export const getScreenings = () => apiCall<{ screenings: Screening[]; note: string }>('/preventive/screenings');
+export const checkDiabetesRisk = (b: { waist_cm?: number; active_30min_daily: boolean; veg_fruit_daily: boolean; bp_medicine: boolean; high_glucose_before: boolean; family: string }) => apiCall<DiabetesResult>('/preventive/diabetes-risk', { method: 'POST', body: JSON.stringify(b) });
+export const checkHeat = (b: { temp_c: number; humidity_pct: number; effort: string; direct_sun: boolean }) => apiCall<HeatResult>('/preventive/heat-check', { method: 'POST', body: JSON.stringify(b) });
+
+export interface PrimaryCare { doctor: { id: number; doctor_id: string; name: string; specialization: string | null; hospital: string | null; photo_url: string | null } | null; next_appointment: { id: number; starts_at: string | null; mode: string; reason: string | null } | null; pending_requests: number; last_visit: RecVisit | null }
+export const getPrimaryCare = () => apiCall<PrimaryCare>('/records/primary-care');
+export interface DepEntry { id: number; kind: 'vaccine' | 'result' | 'visit'; title: string; detail: string | null; on_date: string | null }
+export const getDependentEntries = (id: number) => apiCall<{ entries: DepEntry[] }>(`/records/dependents/${id}/entries`);
+export const addDependentEntry = (id: number, b: { kind: string; title: string; detail?: string; on_date: string }) => apiCall<DepEntry>(`/records/dependents/${id}/entries`, { method: 'POST', body: JSON.stringify(b) });
+export const deleteDependentEntry = (id: number, entry: number) => apiCall(`/records/dependents/${id}/entries/${entry}`, { method: 'DELETE' });
+export interface MyWorkplace { id: number; name: string; region: string; latest: { temp_c: number; humidity_pct: number; at: string | null; source: string } | null; level: string | null; advice: HeatResult | null }
+export const getMyWorkplaces = () => apiCall<{ workplaces: MyWorkplace[] }>('/workplace');
+export const joinWorkplace = (code: string) => apiCall<MyWorkplace>('/workplace/join', { method: 'POST', body: JSON.stringify({ code }) });
+export const leaveWorkplace = (id: number) => apiCall('/workplace/' + id, { method: 'DELETE' });
+
 export const getDoctorAppointments = () => apiCall<{ appointments: DoctorAppt[] }>('/my-doctor/appointments');
 export const requestDoctorAppointment = (b: { starts_at: string; duration_min: number; mode: string; reason?: string }) => apiCall<DoctorAppt>('/my-doctor/appointments', { method: 'POST', body: JSON.stringify(b) });
 export const cancelDoctorAppointment = (id: number) => apiCall<DoctorAppt>(`/my-doctor/appointments/${id}/cancel`, { method: 'POST' });

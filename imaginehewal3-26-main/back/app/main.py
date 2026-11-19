@@ -36,6 +36,9 @@ from app.routers.behavior_support import router as behavior_support_router, doct
 from app.routers.doctor_link import doctor_router as link_doctor_router, patient_router as link_patient_router
 from app.routers.behavior_coach import router as behavior_coach_router
 from app.routers.agent import router as agent_router, doctor_router as agent_doctor_router
+from app.routers.workplace import doctor_router as workplace_doctor_router, patient_router as workplace_patient_router
+from app.routers.preventive import router as preventive_router
+from app.routers.records import patient_router as records_patient_router, doctor_router as records_doctor_router
 from app.routers.care_plan import doctor_router as care_plan_doctor_router, patient_router as care_plan_patient_router, misc_router as care_plan_misc_router
 from app.routers.assistant import router as assistant_router
 from app.routers.emergency import router as emergency_router
@@ -199,6 +202,11 @@ app.include_router(my_doctor_router)
 app.include_router(care_plan_doctor_router)
 app.include_router(care_plan_patient_router)
 app.include_router(care_plan_misc_router)
+app.include_router(records_patient_router)
+app.include_router(preventive_router)
+app.include_router(workplace_doctor_router)
+app.include_router(workplace_patient_router)
+app.include_router(records_doctor_router)
 app.include_router(behavior_support_router)
 app.include_router(behavior_doctor_router)
 app.include_router(link_doctor_router)

@@ -122,7 +122,7 @@ def ref():
     return f"HW-{datetime.now().strftime('%y')}-" + "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
 
 
-def build(db, doctor, caregiver, p, password, idx):
+def build(db, doctor, caregiver, p, password, idx, reset_password=False):
     rnd = random.Random(7000 + idx)
     now = datetime.now(timezone.utc)
     local = datetime.now()
@@ -132,7 +132,7 @@ def build(db, doctor, caregiver, p, password, idx):
     if not u:
         u = User(email=email, username=(p.get("slug") or p["email"].split("@")[0]).replace(".", "_"), hashed_password=get_password_hash(password), is_active=True, is_email_verified=True, is_caregiver=False)
         db.add(u); db.commit(); db.refresh(u)
-    elif password:
+    elif reset_password:                                       # only with --password: never replace a real person's password with a random one
         u.hashed_password = get_password_hash(password); db.commit()
     wipe(db, u.id)
     prof = db.query(UserProfile).filter(UserProfile.user_id == u.id).first() or UserProfile(user_id=u.id)
@@ -331,7 +331,7 @@ def main(remove: bool, password: str | None):
         caregiver = db.query(User).filter(User.email == "caregiver@gmail.com").first()
         pw = password or secrets.token_urlsafe(18)             # unusable unless you passed --password
         for i, p in enumerate(PEOPLE + MORE + EXTRA):
-            build(db, doctor, caregiver, p, pw, i)
+            build(db, doctor, caregiver, p, pw, i, reset_password=bool(password))
             print("ready:", p["name"])
         print("\nOpen the doctor website, sign in as", DOCTOR_ID, "and look at Today, Patients, Messages, Schedule, Documents, Impact.")
     finally:

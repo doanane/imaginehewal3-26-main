@@ -87,3 +87,5 @@ from .care_chat import DoctorMessage
 from .link_request import DoctorLinkRequest
 from .care_plan import DoctorAppointment, DoctorNote, Prescription, PushToken, CareNote
 from .behavior import ComebackSession, AgentRun, BehaviorContext, BehaviorNudge, BehaviorShare, BehaviorCheer, BehaviorGroup, BehaviorGroupMember
+from .records import PatientAllergy, LabResult, RadiologyReport, Immunisation, InsurancePolicy, Dependent, CareVisit, RecordShare, RecordShareUse
+from .workplace import Workplace, WorkplaceMember, SiteReading, DependentEntry
