@@ -186,6 +186,8 @@ def test_the_guest_doctor_sees_a_simulated_handoff_and_the_guest_patient_has_a_l
     gp = c.post("/auth/guest", json={"role": "patient"}).json()
     hp = {"Authorization": "Bearer " + gp["access_token"]}
     q = c.get("/doctor-portal/agent/queue", headers=hd).json()["pending"]
-    assert q and q[0]["trace"]["simulated"] and q[0]["patient"] and q[0]["trace"]["handoff"]["reasons"][0]["code"] == "safety"
+    # the sandbox queue holds several simulated hand-offs (newest first): every one is simulated and named, and at least one is a safety hand-off
+    assert q and all(x["trace"]["simulated"] and x["patient"] for x in q)
+    assert any(x["trace"]["handoff"]["reasons"][0]["code"] == "safety" for x in q)
     loop = c.get("/agent/loop", headers=hp).json()
     assert loop["has_plan"] and loop["state"] == "lapse" and loop["missed_days"] == 4 and not loop["handoff"]["needed"]

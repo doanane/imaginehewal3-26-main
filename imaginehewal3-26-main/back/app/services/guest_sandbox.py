@@ -85,7 +85,9 @@ def ensure_sandbox(db: Session, force: bool = False):
     fresh = db.query(func.max(VitalReading.timestamp)).filter(VitalReading.user_id == user.id).scalar()
     from app.models.behavior import AgentRun
     has_agent = db.query(AgentRun.id).filter(AgentRun.user_id == user.id).first() is not None       # an older sandbox is rebuilt once to gain the agent demo
-    if not force and fresh is not None and has_agent:
+    from app.services import guest_cohort
+    has_cohort = guest_cohort.exists(db)                                                              # an older sandbox is rebuilt once to gain the sample patient list
+    if not force and fresh is not None and has_agent and has_cohort:
         fresh = fresh if getattr(fresh, "tzinfo", None) else fresh.replace(tzinfo=timezone.utc)
         if datetime.now(timezone.utc) - fresh < timedelta(seconds=REBUILD_AFTER_S):
             _last_built = time.time()
@@ -178,4 +180,6 @@ def _build(db: Session, user, doctor) -> None:
     db.commit()
     care_agent.demo_handoff(db, user, name="Ama Mensah", age=52, conditions=["Hypertension"], doctor="Dr. Efua Owusu", kind="safety")
     db.commit()
+    from app.services import guest_cohort
+    guest_cohort.build(db, doctor, user)            # the rest of the doctor's patient list, so no page of the doctor website is empty
     logger.info("guest sandbox rebuilt")
