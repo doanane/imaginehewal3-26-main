@@ -77,6 +77,11 @@ HEWAL3 notices a lapse (three or more days without a check-in), reaches the pers
 | **Accessibility** | Dark and high-contrast modes, text size, colour-blind help, read-aloud and larger tap areas, applied across every screen. |
 | **Privacy centre** | Consent switches, an access log the patient can read, one-tap data export and erase. |
 | **Guest sandbox** | Try the app with no sign-up ("Continue as Reviewer"), on clearly labelled demo data. |
+| **Health record** | Allergies, laboratory results, imaging reports, vaccinations, insurance and hospital check-in and check-out, on the phone and on the doctor website, updated live. Patients add allergies, vaccines and insurance; doctors add results, imaging and visits. |
+| **Primary care and family profiles** | The patient's chosen doctor, next visit and last visit with booking and messaging; profiles for a child, parent or partner with their own vaccines, results and visits (private to the guardian). |
+| **Prevention** | Screening reminders by age and sex, the published FINDRISC type 2 diabetes risk questionnaire, and a heat check with advice for the person's own conditions. |
+| **Workplace heat safety** | An occupational-health doctor records site temperature and humidity (by hand or from a sensor); joined staff are warned at danger. Employers see counts only, never under 5. |
+| **Sharing between clinics** | A time-limited code the patient gives another clinic; the clinic receives the shared record as an HL7 FHIR bundle, each use is logged for the patient, and the patient can cancel it. |
 
 ## Who it is for
 The habit system is not limited to one condition. Each person has an **audience segment**, suggested from age, conditions and work pattern, and changeable by the user.
