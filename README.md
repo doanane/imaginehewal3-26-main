@@ -6,9 +6,9 @@
 
 **A health platform prototype for patients, caregivers, and clinicians.** The product is in the prototype phase; UAE hosting and deployment are pending.
 
-[![Watch the HEWAL3 demo](https://img.youtube.com/vi/C5Uk6uILL7I/hqdefault.jpg)](https://www.youtube.com/watch?v=C5Uk6uILL7I)
+[![Watch the HEWAL3 demo](https://img.youtube.com/vi/C5Uk6uILL7I/hqdefault.jpg)](https://youtu.be/9vx37vWLBeI)
 
-[Watch the demo on YouTube](https://www.youtube.com/watch?v=C5Uk6uILL7I)
+[Watch the demo on YouTube](https://youtu.be/9vx37vWLBeI)
 
 ![Python](https://img.shields.io/badge/Python-3.11-3776ab?style=flat-square)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square)
