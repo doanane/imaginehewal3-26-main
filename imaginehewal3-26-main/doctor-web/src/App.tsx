@@ -52,6 +52,18 @@ export default function App() {
     window.location.hash = '#/';
   }, []);
   useEffect(() => { setExpiredHandler(() => signOut(true)); }, [signOut]);
+  // Automatic sign-out after 30 minutes with no mouse, keyboard or touch, so a screen left open in a clinic does not stay signed in (HIPAA automatic logoff).
+  // The reviewer sandbox is exempt: it holds only sample data.
+  const guestDoctor = session?.doctor?.doctor_id === 'DOCGUEST';
+  useEffect(() => {
+    if (!session || guestDoctor) return;
+    const LIMIT = 30 * 60 * 1000;
+    let t = window.setTimeout(() => signOut(true), LIMIT);
+    const bump = () => { window.clearTimeout(t); t = window.setTimeout(() => signOut(true), LIMIT); };
+    const evs = ['mousemove', 'keydown', 'pointerdown', 'touchstart', 'scroll'] as const;
+    evs.forEach(e => window.addEventListener(e, bump, { passive: true }));
+    return () => { window.clearTimeout(t); evs.forEach(e => window.removeEventListener(e, bump)); };
+  }, [session, guestDoctor, signOut]);
 
   if (/^#\/story\/?$/.test(route)) return <MotionConfig reducedMotion="user"><StoryPage /></MotionConfig>;      // the story is public: judges can watch it with no sign-in
   const pub = /^#\/verify\/?(.*)$/.exec(route);          // the check page works without signing in

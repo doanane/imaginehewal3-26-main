@@ -15,6 +15,17 @@ class AccessLog(Base):
     at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
+class DoctorAccessLog(Base):
+    """A doctor opened a patient's record. Shown to the patient in the privacy centre next to caregiver access (HIPAA audit controls: who accessed what, when)."""
+    __tablename__ = "doctor_access_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    doctor_pk = Column(Integer, ForeignKey("doctors.id"), index=True, nullable=False)
+    resource = Column(String, nullable=False, default="record")
+    at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
 class WellbeingCheckin(Base):
     """PHQ-2 and GAD-2 answers (public-domain screeners). Private to the user: never shown to caregivers."""
     __tablename__ = "wellbeing_checkins"

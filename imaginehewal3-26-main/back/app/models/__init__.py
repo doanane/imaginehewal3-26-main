@@ -35,7 +35,7 @@ from .notification import Notification
 from .behavior import BehaviorPlan, BehaviorAction, BehaviorSettings
 from .assistant import AssistantMessage
 from .safety import SosEvent, SosLog, Medication, MedicationLog
-from .trust import AccessLog, WellbeingCheckin
+from .trust import AccessLog, DoctorAccessLog, WellbeingCheckin
 from .activity import (HealthGoals, Workout, WeightLog, SleepSession, Participant, Achievement,
                        CommunityPost, PostComment, PostLike, PostReport)
 from .community_review import CommunityReview

@@ -243,6 +243,7 @@ npx tsc --noEmit                             # type check
 |---|---|
 | [`docs/BUILT_DURING_THE_CHALLENGE.md`](docs/BUILT_DURING_THE_CHALLENGE.md) | What was built for the challenge, what it stands on, and how to check each claim |
 | [`docs/ASSESSMENT_MAP.md`](docs/ASSESSMENT_MAP.md) | Each assessment criterion, the evidence and how to check it |
+| [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) | Privacy and security controls in place, and the gaps before a real pilot (not HIPAA certified) |
 | [`docs/PILOT_AND_COMMERCIAL.md`](docs/PILOT_AND_COMMERCIAL.md) | 12-week pilot design, measures, compliance gaps, business model |
 | [`docs/VALIDATION.md`](docs/VALIDATION.md) | Rule verification by simulation |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and emergency flow |

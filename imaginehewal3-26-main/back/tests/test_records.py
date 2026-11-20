@@ -77,3 +77,14 @@ def test_doctor_cannot_touch_someone_elses_patient(env):
     assert c.post(f"/doctor-portal/patients/{oid}/visits", headers=hd, json={}).status_code == 404
     # and the endpoints need a login at all
     assert c.get("/records").status_code in (401, 403)
+
+
+def test_doctor_access_is_written_to_the_patients_access_log(env):
+    c = env["client"]
+    _, hd = login(c)
+    pid = env["pat"]
+    assert c.get(f"/doctor-portal/patients/{pid}/records", headers=hd).status_code == 200
+    assert c.get(f"/doctor-portal/patients/{pid}/records", headers=hd).status_code == 200      # a second look inside 10 minutes is not a second entry
+    rows = c.get("/privacy/log", headers=env["hp"]).json()["items"]
+    mine = [r for r in rows if r["role"] == "doctor"]
+    assert len(mine) == 1 and mine[0]["what"] == "your health record" and mine[0]["viewer"].startswith("Dr")

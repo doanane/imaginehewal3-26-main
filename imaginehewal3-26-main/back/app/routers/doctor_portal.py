@@ -49,6 +49,12 @@ def _owned_patient(db: Session, doctor: Doctor, patient_id: int):
            .filter(User.id == patient_id, UserProfile.doctor_id == doctor.doctor_id).first())
     if not row:
         raise HTTPException(404, "Patient not found or not assigned to you")
+    try:
+        from app.services.privacy_service import log_doctor_access
+        log_doctor_access(db, patient_id, doctor)               # every doctor access to a patient record is written to the patient's access log
+    except Exception:                                           # the log must never block care, but a failure is reported
+        import logging
+        logging.getLogger(__name__).exception("Could not write the doctor access log")
     return row
 
 

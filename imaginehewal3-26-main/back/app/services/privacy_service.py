@@ -67,6 +67,16 @@ def log_access(db: Session, patient_id: int, viewer: User, resource: str) -> Non
     db.commit()
 
 
+def log_doctor_access(db: Session, patient_id: int, doctor, resource: str = "record") -> None:
+    """Record that a doctor opened this patient's record. One entry per doctor and patient every 10 minutes keeps the log readable."""
+    from app.models.trust import DoctorAccessLog
+    since = _now() - timedelta(minutes=10)
+    if db.query(DoctorAccessLog).filter(DoctorAccessLog.patient_id == patient_id, DoctorAccessLog.doctor_pk == doctor.id, DoctorAccessLog.at >= since).first():
+        return
+    db.add(DoctorAccessLog(patient_id=patient_id, doctor_pk=doctor.id, resource=resource))
+    db.commit()
+
+
 LABELS = {"risk_summary": "your risk level", "analytics": "your health trends", "emergency": "your emergency",
           "clinician_summary": "your health summary"}
 
@@ -78,7 +88,14 @@ def access_log(db: Session, user: User, limit: int = 50) -> List[dict]:
         v = db.query(User).filter(User.id == r.viewer_id).first()
         out.append({"id": r.id, "viewer": _name(v), "role": r.viewer_role, "what": LABELS.get(r.resource, r.resource),
                     "at": _utc(r.at).isoformat() if r.at else None})
-    return out
+    from app.models.caregiver import Doctor
+    from app.models.trust import DoctorAccessLog
+    docs = {d.id: d.full_name for d in db.query(Doctor).all()}
+    for r in db.query(DoctorAccessLog).filter_by(patient_id=user.id).order_by(DoctorAccessLog.id.desc()).limit(limit).all():
+        out.append({"id": 1_000_000 + r.id, "viewer": docs.get(r.doctor_pk, "Your doctor"), "role": "doctor", "what": "your health record",
+                    "at": _utc(r.at).isoformat() if r.at else None})
+    out.sort(key=lambda x: x["at"] or "", reverse=True)
+    return out[:limit]
 
 
 # ------------------------------------------------------------------ who can see my data
