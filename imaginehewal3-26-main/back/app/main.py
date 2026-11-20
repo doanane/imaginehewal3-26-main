@@ -136,6 +136,12 @@ async def start_reengagement_worker():
 
 
 @app.on_event("startup")
+def start_keep_awake():
+    from app.services import keep_awake
+    keep_awake.start()                      # pings its own /ping every 15 seconds on Render, so free hosting does not put it to sleep
+
+
+@app.on_event("startup")
 def warm_database_pool():
     import threading
     from app.database import warm_pool
